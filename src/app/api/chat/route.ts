@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Haal de bericht data op uit de request
-    const { message, image } = await request.json()
+    const { message, image, images } = await request.json()
 
     if (!message) {
       return NextResponse.json(
@@ -48,8 +48,21 @@ export async function POST(request: NextRequest) {
 
     let result;
     
-    if (image) {
-      // Als er een afbeelding is, stuur zowel tekst als afbeelding
+    if (images && images.length > 0) {
+      // Meerdere afbeeldingen - gebruik nieuwe images array
+      const imageParts = images.map((imageData: string) => {
+        const imageBuffer = base64ToBuffer(imageData)
+        return {
+          inlineData: {
+            data: imageBuffer.toString('base64'),
+            mimeType: 'image/jpeg'
+          }
+        }
+      })
+      
+      result = await model.generateContent([message, ...imageParts])
+    } else if (image) {
+      // Backward compatibility - één afbeelding (legacy)
       const imageBuffer = base64ToBuffer(image)
       
       const imagePart = {
