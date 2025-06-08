@@ -7,7 +7,7 @@ import CameraCapture from './CameraCapture'
 interface UploadedFile {
   id: string
   name: string
-  type: 'image' | 'document' | 'data'
+  type: 'image' | 'document' | 'data' | 'audio'
   preview: string | null
   content: string
   size: number
@@ -18,7 +18,11 @@ interface UploadedFile {
 export default function TestChatBot() {
   const [message, setMessage] = useState('')
   const [response, setResponse] = useState('')
+  const [streamingResponse, setStreamingResponse] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [isWaitingForStream, setIsWaitingForStream] = useState(false)
+
   const [isListening, setIsListening] = useState(false)
   const [uploadedContent, setUploadedContent] = useState('')
   const [capturedImage, setCapturedImage] = useState<string>('')
@@ -288,15 +292,17 @@ export default function TestChatBot() {
     const imageFormats = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
     const documentFormats = ['docx', 'pdf', 'txt', 'md']
     const dataFormats = ['csv', 'json']
+    const audioFormats = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'mp4', 'mpeg', 'mpga', 'webm']
     
     // Check file extension
     const extension = fileName.split('.').pop() || ''
     const isImage = imageFormats.some(format => fileName.endsWith(`.${format}`)) || fileType.startsWith('image/')
     const isDocument = documentFormats.some(format => fileName.endsWith(`.${format}`))
     const isData = dataFormats.some(format => fileName.endsWith(`.${format}`))
+    const isAudio = audioFormats.some(format => fileName.endsWith(`.${format}`)) || fileType.startsWith('audio/')
     
-    if (!isImage && !isDocument && !isData) {
-      alert(`Bestandstype niet ondersteund!\n\nOndersteunde formaten:\n📸 Afbeeldingen: ${imageFormats.join(', ')}\n📄 Documenten: ${documentFormats.join(', ')}\n📊 Data: ${dataFormats.join(', ')}`)
+    if (!isImage && !isDocument && !isData && !isAudio) {
+      alert(`Bestandstype niet ondersteund!\n\nOndersteunde formaten:\n📸 Afbeeldingen: ${imageFormats.join(', ')}\n📄 Documenten: ${documentFormats.join(', ')}\n📊 Data: ${dataFormats.join(', ')}\n🎵 Audio: ${audioFormats.join(', ')}`)
       return
     }
 
@@ -382,6 +388,47 @@ export default function TestChatBot() {
         return
       }
       
+      if (isAudio) {
+        // Handle audio files - transcription via server
+        setIsLoading(true)
+        const formData = new FormData()
+        formData.append('file', file)
+
+        try {
+          const response = await fetch('/api/transcribe-audio', {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Transcriptie mislukt')
+          }
+
+          const data = await response.json()
+          
+          // Add to file manager
+          const uploadedFile: UploadedFile = {
+            id: generateFileId(),
+            name: file.name,
+            type: 'audio',
+            preview: data.transcription.length > 100 ? data.transcription.substring(0, 100) + '...' : data.transcription,
+            content: data.transcription,
+            size: file.size,
+            uploadedAt: new Date(),
+            selected: true
+          }
+          
+          addUploadedFile(uploadedFile)
+        } catch (error) {
+          console.error('Audio transcription error:', error)
+          alert('Fout bij audio transcriptie: ' + (error instanceof Error ? error.message : 'Onbekende fout'))
+        } finally {
+          setIsLoading(false)
+        }
+        return
+      }
+      
       // Handle other documents (PDF, DOCX, CSV) via server upload
       const formData = new FormData()
       formData.append('file', file)
@@ -417,6 +464,160 @@ export default function TestChatBot() {
     }
   }
 
+  // Abort controller for stopping streams
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const currentStreamingResponseRef = useRef<string>('')
+  const hasReceivedFirstTokenRef = useRef<boolean>(false)
+
+  const sendMessageStreaming = async () => {
+    const selectedFiles = getSelectedFiles()
+    
+    if (!message.trim() && selectedFiles.length === 0) return
+
+    // Reset states
+    setIsWaitingForStream(true)
+    setIsStreaming(false)
+    setIsLoading(false)
+    setStreamingResponse('')
+    setResponse('')
+    currentStreamingResponseRef.current = ''
+    hasReceivedFirstTokenRef.current = false
+
+    // Create abort controller for this request
+    abortControllerRef.current = new AbortController()
+
+    try {
+      const payload: any = { message }
+      
+      // Add selected files to payload
+      if (selectedFiles.length > 0) {
+        // Send ALL selected images for Gemini Vision
+        const selectedImages = selectedFiles.filter(file => file.type === 'image')
+        if (selectedImages.length > 0) {
+          payload.images = selectedImages.map(img => img.content)
+        }
+        
+        // Add context from all selected files
+        const fileContexts = selectedFiles.map((file, index) => {
+          const fileType = file.type === 'image' ? 'Afbeelding' : 
+                          file.type === 'document' ? 'Document' : 
+                          file.type === 'audio' ? 'Audio Transcriptie' : 'Data'
+          if (file.type === 'image') {
+            return `[${fileType} ${index + 1}: ${file.name}]\n[Afbeelding bijgevoegd voor analyse]`
+          } else {
+            return `[${fileType}: ${file.name}]\n${file.content}`
+          }
+        }).join('\n\n---\n\n')
+        
+        if (message.trim()) {
+          payload.message = `${message}\n\n=== BIJGEVOEGDE BESTANDEN ===\n${fileContexts}`
+        } else {
+          payload.message = `Analyseer de volgende bestanden:\n\n${fileContexts}`
+        }
+      }
+
+      // Start streaming request
+      const response = await fetch('/api/chat-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: abortControllerRef.current.signal
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      // Process streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No readable stream available')
+      }
+
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+
+        // Decode chunk and add to buffer
+        buffer += decoder.decode(value, { stream: true })
+        
+        // Process complete lines
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              
+              if (data.error) {
+                throw new Error(data.message || 'Streaming error')
+              }
+              
+              if (data.done) {
+                // Stream completed - save current streaming response as final response
+                setIsStreaming(false)
+                setIsWaitingForStream(false)
+                setResponse(currentStreamingResponseRef.current)
+                return
+              }
+              
+              if (data.token) {
+                // First token - switch from waiting to streaming
+                if (!hasReceivedFirstTokenRef.current) {
+                  hasReceivedFirstTokenRef.current = true
+                  setIsWaitingForStream(false)
+                  setIsStreaming(true)
+                  console.log('First token received, switching to streaming mode')
+                }
+                
+                // Add token to streaming response
+                const newResponse = currentStreamingResponseRef.current + data.token
+                currentStreamingResponseRef.current = newResponse
+                setStreamingResponse(newResponse)
+                console.log('Streaming token:', data.token, 'Total length:', newResponse.length)
+              }
+            } catch (parseError) {
+              console.error('Error parsing streaming data:', parseError)
+            }
+          }
+        }
+      }
+
+    } catch (error: any) {
+      console.error('Streaming error:', error)
+      
+      if (error.name === 'AbortError') {
+        // Request was aborted - keep current streaming response if available
+        if (!currentStreamingResponseRef.current) {
+          setResponse('Generatie gestopt door gebruiker.')
+        } else {
+          setResponse(currentStreamingResponseRef.current)
+        }
+      } else {
+        setResponse('Error: ' + (error instanceof Error ? error.message : 'Onbekende fout'))
+      }
+    } finally {
+      setIsStreaming(false)
+      setIsWaitingForStream(false)
+      setIsLoading(false)
+      abortControllerRef.current = null
+    }
+  }
+
+  const stopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+  }
+
+  // Legacy non-streaming function (fallback)
   const sendMessage = async () => {
     const selectedFiles = getSelectedFiles()
     
@@ -437,7 +638,8 @@ export default function TestChatBot() {
         // Add context from all selected files
         const fileContexts = selectedFiles.map((file, index) => {
           const fileType = file.type === 'image' ? 'Afbeelding' : 
-                          file.type === 'document' ? 'Document' : 'Data'
+                          file.type === 'document' ? 'Document' : 
+                          file.type === 'audio' ? 'Audio Transcriptie' : 'Data'
           if (file.type === 'image') {
             return `[${fileType} ${index + 1}: ${file.name}]\n[Afbeelding bijgevoegd voor analyse]`
           } else {
@@ -478,7 +680,7 @@ export default function TestChatBot() {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      sendMessageStreaming()
     }
   }
 
@@ -539,7 +741,7 @@ export default function TestChatBot() {
                         onClick={(e) => e.stopPropagation()}
                       />
                       <span className="text-lg">
-                        {file.type === 'image' ? '📸' : file.type === 'document' ? '📄' : '📊'}
+                        {file.type === 'image' ? '📸' : file.type === 'document' ? '📄' : file.type === 'audio' ? '🎵' : '📊'}
                       </span>
                     </div>
                     <button
@@ -632,7 +834,7 @@ export default function TestChatBot() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
                 className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                title="Bestand uploaden (📸 afbeeldingen, 📄 documenten, 📊 data)"
+                title="Bestand uploaden (📸 afbeeldingen, 📄 documenten, 📊 data, 🎵 audio)"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -663,11 +865,11 @@ export default function TestChatBot() {
               
               {/* Send Button */}
               <button
-                onClick={sendMessage}
-                disabled={isLoading || !message.trim()}
+                onClick={sendMessageStreaming}
+                disabled={(isLoading || isStreaming || isWaitingForStream) || (!message.trim() && getSelectedFiles().length === 0)}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isLoading ? '⏳' : '🚀'}
+                {isWaitingForStream ? '🤔' : isStreaming ? '💭' : isLoading ? '⏳' : '🚀'}
               </button>
             </div>
           </div>
@@ -688,8 +890,24 @@ export default function TestChatBot() {
           )}
         </div>
 
+
+
         {/* Response Area */}
-        {isLoading && (
+        {isWaitingForStream && (
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="flex space-x-1">
+                <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-3 h-3 bg-indigo-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+              </div>
+              <span className="text-purple-700 font-medium">🧠 Ik ga aan de slag met je slimme prompt!</span>
+            </div>
+            <p className="text-purple-600 text-sm mt-2 ml-12">Even geduld, ik verzamel alle info en denk na over het beste antwoord... ✨</p>
+          </div>
+        )}
+        
+        {isLoading && !isStreaming && !isWaitingForStream && (
           <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
             <div className="flex items-center space-x-2">
               <div className="flex space-x-1">
@@ -702,39 +920,53 @@ export default function TestChatBot() {
           </div>
         )}
 
-        {response && !isLoading && (
+        {(response || streamingResponse || isStreaming) && !isLoading && !isWaitingForStream && (
           <div className={`p-4 rounded-lg ${
-            response.startsWith('Error:') 
+            (response && response.startsWith('Error:')) 
               ? 'bg-red-50 border border-red-200' 
               : 'bg-green-50 border border-green-200'
           }`}>
             <p className={`text-sm font-medium mb-2 ${
-              response.startsWith('Error:') 
+              (response && response.startsWith('Error:')) 
                 ? 'text-red-800' 
                 : 'text-green-800'
             }`}>
-              {response.startsWith('Error:') 
-                ? '❌ Fout:' 
-                : '✅ Succes! Je API key werkt perfect:'
-              }
+              <span className="flex items-center">
+                {(response && response.startsWith('Error:')) ? (
+                  <>❌ Fout:</>
+                ) : (
+                  <>
+                    <span className={`w-3 h-3 rounded-full mr-2 ${
+                      isStreaming ? 'bg-blue-600 animate-pulse' : 'bg-green-600'
+                    }`}></span>
+                    {isStreaming ? '🔄 Live Response:' : '✅ Succes! Je API key werkt perfect:'}
+                  </>
+                )}
+              </span>
             </p>
-            <div className="bg-white p-3 rounded border">
-              {response.startsWith('Error:') ? (
+            <div className="bg-white p-3 rounded border relative">
+              {(response && response.startsWith('Error:')) ? (
                 <p className="text-gray-700 text-sm whitespace-pre-wrap">
                   {response}
                 </p>
               ) : (
-                <MarkdownRenderer 
-                  content={response} 
-                  className="text-gray-700 text-sm"
-                />
+                <div className="relative">
+                  <MarkdownRenderer 
+                    content={isStreaming ? streamingResponse : response} 
+                    className="text-gray-700 text-sm"
+                  />
+                  {isStreaming && (
+                    <span className="inline-block w-2 h-4 bg-purple-600 animate-pulse ml-1 align-text-bottom"></span>
+                  )}
+                </div>
               )}
             </div>
-            {response.startsWith('Error:') && (
+            {(response && response.startsWith('Error:')) && (
               <p className="text-red-600 text-xs mt-2">
                 Controleer of je API key correct is ingesteld in .env.local
               </p>
             )}
+
           </div>
         )}
 
@@ -743,7 +975,7 @@ export default function TestChatBot() {
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".docx,.pdf,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif,.webp,.bmp,image/*"
+                      accept=".docx,.pdf,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif,.webp,.bmp,image/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.mp4,.mpeg,.mpga,.webm,audio/*"
           onChange={(e) => {
             const files = e.target.files
             if (files && files.length > 0) {

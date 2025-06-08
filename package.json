@@ -3,7 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "description": "Een Next.js template met Gemini AI integratie, geoptimaliseerd voor Bolt + Netlify deployment",
-  "keywords": ["nextjs", "gemini", "ai", "chatbot", "netlify", "bolt", "typescript"],
+  "keywords": [
+    "nextjs",
+    "gemini",
+    "ai",
+    "chatbot",
+    "netlify",
+    "bolt",
+    "typescript"
+  ],
   "author": "Tom Naberink",
   "scripts": {
     "dev": "next dev",
@@ -22,6 +30,7 @@
     "fs": "^0.0.1-security",
     "mammoth": "^1.9.1",
     "next": "15.3.3",
+    "openai": "^5.1.1",
     "pdf-parse": "^1.1.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
