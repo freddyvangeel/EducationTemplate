@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import MarkdownRenderer from './MarkdownRenderer'
+import CameraCapture from './CameraCapture'
 
 export default function TestChatBot() {
   const [message, setMessage] = useState('')
@@ -8,6 +10,8 @@ export default function TestChatBot() {
   const [isLoading, setIsLoading] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [uploadedContent, setUploadedContent] = useState('')
+  const [capturedImage, setCapturedImage] = useState<string>('')
+  const [imagePreview, setImagePreview] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<any>(null)
 
@@ -56,6 +60,17 @@ export default function TestChatBot() {
     }
   }
 
+  const handleCameraCapture = (imageData: string, blob: Blob) => {
+    setCapturedImage(imageData)
+    setImagePreview(imageData)
+    setMessage(prev => prev + (prev ? '\n\n' : '') + '📸 Foto toegevoegd - vraag me iets over deze afbeelding!')
+  }
+
+  const removeCapturedImage = () => {
+    setCapturedImage('')
+    setImagePreview('')
+  }
+
   const handleFileUpload = async (file: File) => {
     if (!file.name.endsWith('.docx') && !file.name.endsWith('.pdf')) {
       alert('Alleen .docx en .pdf bestanden zijn toegestaan!')
@@ -97,12 +112,19 @@ export default function TestChatBot() {
 
     setIsLoading(true)
     try {
+      const payload: any = { message }
+      
+      // Voeg afbeelding toe als deze beschikbaar is
+      if (capturedImage) {
+        payload.image = capturedImage
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -139,6 +161,24 @@ export default function TestChatBot() {
       <div className="space-y-4">
         {/* Input Area */}
         <div className="bg-white rounded-lg border border-purple-200 p-3">
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="mb-3 relative inline-block">
+              <img 
+                src={imagePreview} 
+                alt="Captured" 
+                className="max-w-32 max-h-32 rounded-lg shadow-sm"
+              />
+              <button
+                onClick={removeCapturedImage}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                title="Foto verwijderen"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           <div className="flex items-end space-x-2">
             {/* Text Input */}
             <div className="flex-1">
@@ -166,6 +206,12 @@ export default function TestChatBot() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                 </svg>
               </button>
+              
+              {/* Camera Button */}
+              <CameraCapture 
+                onCapture={handleCameraCapture}
+                disabled={isLoading}
+              />
               
               {/* Voice Input Button */}
               <button
@@ -240,9 +286,18 @@ export default function TestChatBot() {
                 : '✅ Succes! Je API key werkt perfect:'
               }
             </p>
-            <p className="text-gray-700 text-sm bg-white p-3 rounded border whitespace-pre-wrap">
-              {response}
-            </p>
+            <div className="bg-white p-3 rounded border">
+              {response.startsWith('Error:') ? (
+                <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                  {response}
+                </p>
+              ) : (
+                <MarkdownRenderer 
+                  content={response} 
+                  className="text-gray-700 text-sm"
+                />
+              )}
+            </div>
             {response.startsWith('Error:') && (
               <p className="text-red-600 text-xs mt-2">
                 Controleer of je API key correct is ingesteld in .env.local

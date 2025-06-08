@@ -4,6 +4,12 @@ import { NextRequest, NextResponse } from 'next/server'
 // Initialiseer de Gemini AI client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
+// Helper functie om base64 naar buffer te converteren
+function base64ToBuffer(base64: string): Buffer {
+  const base64Data = base64.replace(/^data:image\/\w+;base64,/, '')
+  return Buffer.from(base64Data, 'base64')
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Betere error handling voor Netlify
@@ -20,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Haal de bericht data op uit de request
-    const { message } = await request.json()
+    const { message, image } = await request.json()
 
     if (!message) {
       return NextResponse.json(
@@ -40,8 +46,25 @@ export async function POST(request: NextRequest) {
     // Haal het Gemini model op - gebruik het nieuwste model
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' })
 
-    // Genereer een response van Gemini
-    const result = await model.generateContent(message)
+    let result;
+    
+    if (image) {
+      // Als er een afbeelding is, stuur zowel tekst als afbeelding
+      const imageBuffer = base64ToBuffer(image)
+      
+      const imagePart = {
+        inlineData: {
+          data: imageBuffer.toString('base64'),
+          mimeType: 'image/jpeg'
+        }
+      }
+      
+      result = await model.generateContent([message, imagePart])
+    } else {
+      // Alleen tekst
+      result = await model.generateContent(message)
+    }
+
     const response = await result.response
     const text = response.text()
 
