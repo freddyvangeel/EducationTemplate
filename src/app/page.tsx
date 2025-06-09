@@ -1,5 +1,6 @@
 import TestChatBot from '@/components/TestChatBot'
 import CopyButton from '@/components/CopyButton'
+import Image from 'next/image'
 
 export default function Home() {
   return (
@@ -14,12 +15,25 @@ export default function Home() {
           </div>
           
           <h1 className="text-5xl font-bold text-gray-800 mb-4">
-            Gemini API Template
+            Vibe Coding Template
           </h1>
           
-          <p className="text-xl text-purple-700 font-medium">
-            Dit is een template om met Gemini te werken, gemaakt door Tom Naberink
+          <p className="text-xl text-purple-700 font-medium mb-6">
+            Dit is een template om met Bolt te werken waarbij we gebruik maken van Gemini. Dit template is gemaakt door Tom Naberink
           </p>
+
+          {/* AI voor Docenten Logo */}
+          <div className="flex justify-center mb-8">
+            <div className="bg-white rounded-lg shadow-lg p-4">
+              <Image 
+                src="/images/ai-voor-docenten-logo.png" 
+                alt="AI voor Docenten Logo" 
+                width={192} 
+                height={96}
+                className="rounded-lg"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -36,17 +50,37 @@ export default function Home() {
             
             <div className="space-y-6">
               
-              {/* Step 1 - Create .env.local */}
+              {/* Step 1 - Import from GitHub in Bolt */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 1: Maak een .env.local bestand
+                  Stap 1: Import in Bolt.new
                 </h3>
                 <p className="text-gray-600 mb-3">
-                  Maak een nieuw bestand genaamd <code className="bg-gray-100 px-2 py-1 rounded text-sm">.env.local</code> in de root van je project:
+                  Open <a href="https://bolt.new" target="_blank" className="text-purple-600 hover:text-purple-800 underline">Bolt.new</a> en login. Selecteer '<strong>import from github</strong>' en login op Github. Vervolgens '<strong>import from url</strong>' en vul deze URL in:
                 </p>
                 <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400">.env.local</span>
+                    <span className="text-gray-400">GitHub Repository URL</span>
+                    <CopyButton 
+                      text="https://github.com/TomNaberink/apitemplateTom"
+                      className="text-purple-400 hover:text-purple-300 text-xs transition-colors"
+                      title="Kopieer GitHub URL"
+                    />
+                  </div>
+                  <code>https://github.com/TomNaberink/apitemplateTom</code>
+                </div>
+              </div>
+
+              {/* Step 2 - Create .env.local */}
+              <div className="border-l-4 border-purple-500 pl-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  Stap 2: Maak een .env.local bestand
+                </h3>
+                <p className="text-gray-600 mb-3">
+                  Als het template is geladen ga je naar het <strong>tabblad "Code"</strong>. Bij de files doe je <strong>rechtermuisknop</strong> en klik je op <strong>"New File"</strong>. Die noem je <code className="bg-gray-100 px-2 py-1 rounded text-sm">.env.local</code>. Daar binnen zet je het volgende:
+                </p>
+                <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
+                  <div className="flex items-center justify-end mb-2">
                     <CopyButton 
                       text="GEMINI_API_KEY=your_actual_api_key_here"
                       className="text-purple-400 hover:text-purple-300 text-xs transition-colors"
@@ -56,14 +90,14 @@ export default function Home() {
                   <code>GEMINI_API_KEY=your_actual_api_key_here</code>
                 </div>
                 <p className="text-orange-600 text-sm mt-2 font-medium">
-                  ⚠️ Vervang "your_actual_api_key_here" met je echte API key! (zie stap 2)
+                  ⚠️ Vervang "your_actual_api_key_here" met je echte API key! (zie stap 3)
                 </p>
               </div>
 
-              {/* Step 2 - Get API Key */}
+              {/* Step 3 - Get API Key */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 2: Verkrijg een Gemini API Key
+                  Stap 3: Verkrijg een Gemini API Key
                 </h3>
                 <p className="text-gray-600 mb-3">
                   Ga naar Google AI Studio om je gratis API key aan te maken:
@@ -86,33 +120,12 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Step 3 - Enhanced Test Step */}
+              {/* Step 4 - Enhanced Test Step */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 3: Test je API Key & Alle Features
+                  Stap 4: Test je API Key & Alle Features
                 </h3>
                 <TestChatBot />
-              </div>
-
-              {/* Step 4 - Bolt Instructions */}
-              <div className="border-l-4 border-purple-500 pl-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 4: Werken met Bolt
-                </h3>
-                <p className="text-gray-600 mb-3">
-                  Voordat je begint met bouwen in Bolt, zeg tegen Bolt dat het de ontwikkelingsinstructies moet lezen:
-                </p>
-                <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400">Instructie voor Bolt</span>
-                    <CopyButton 
-                      text="lees instructies.md"
-                      className="text-purple-400 hover:text-purple-300 text-xs transition-colors"
-                      title="Kopieer instructie"
-                    />
-                  </div>
-                  <code>lees instructies.md</code>
-                </div>
               </div>
 
               {/* Step 5 - Build Step */}
@@ -121,8 +134,43 @@ export default function Home() {
                   Stap 5: Bouwen maar!
                 </h3>
                 <p className="text-gray-600">
-                  Wat ga jij maken om het onderwijs te verbeteren?
+                  Er staat veel informatie in de <code className="bg-gray-100 px-2 py-1 rounded text-sm">README.md</code>, maar je mag ook lekker gaan viben! Wat ga jij maken om het onderwijs te verbeteren?
                 </p>
+              </div>
+
+              {/* Step 6 - Deploy with Vercel */}
+              <div className="border-l-4 border-purple-500 pl-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  Stap 6: Deploy met Vercel
+                </h3>
+                <p className="text-gray-600 mb-3">
+                  Ga naar <a href="https://vercel.com" target="_blank" className="text-purple-600 hover:text-purple-800 underline">Vercel.com</a>, login en koppel je Github. Klik op <strong>'Add New'</strong> en importeer de Github die je net hebt gemaakt binnen Bolt. <strong className="text-red-600">KLIK NOG NIET OP DEPLOY</strong>. Eerst moet je de <strong>'Environment Variable'</strong> instellen:
+                </p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-3">
+                  <p className="text-yellow-800 text-sm mb-2">
+                    ⚙️ <strong>Environment Variables instellen:</strong>
+                  </p>
+                  <ul className="text-yellow-700 text-sm space-y-1">
+                    <li>• Bij <strong>'Key'</strong> vul je <code className="bg-yellow-100 px-1 rounded">GEMINI_API_KEY</code> in</li>
+                    <li>• Bij <strong>'Value'</strong> vul je je echte API key in</li>
+                    <li>• Klik dan pas op <strong>'Deploy'</strong></li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Step 7 - Test and Share */}
+              <div className="border-l-4 border-purple-500 pl-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  Stap 7: Testen en delen
+                </h3>
+                <p className="text-gray-600 mb-3">
+                  🎉 <strong>Gefeliciteerd!</strong> Je AI-tool is nu live op het internet. Test alles zorgvuldig voordat je het deelt!
+                </p>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-green-800 text-sm">
+                    🌟 <strong>Tijd om te delen!</strong> Laat je collega's, studenten of vrienden zien wat je hebt gebouwd. Wie weet inspireer je anderen om ook te gaan experimenteren met AI in het onderwijs! 🚀
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -135,7 +183,7 @@ export default function Home() {
               <span>💜</span>
             </div>
             <p className="text-gray-500 text-sm mt-2">
-              Template door Tom Naberink • Powered by Next.js & Gemini AI
+              Vibe Coding Template door Tom Naberink • Powered by Bolt, Next.js & Gemini AI
             </p>
           </div>
         </div>
