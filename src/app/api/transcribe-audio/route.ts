@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+
+// Initialize Gemini AI client
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if OpenAI API key is configured
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY not found in environment variables')
+    // Check if Gemini API key is configured
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not found in environment variables')
       return NextResponse.json(
         { 
-          error: 'OpenAI API key niet geconfigureerd. Voeg OPENAI_API_KEY toe aan je environment variables.',
-          hint: 'Voor audio transcriptie is een OpenAI API key vereist',
-          debug: 'Environment variable OPENAI_API_KEY is not set'
+          error: 'Gemini API key niet geconfigureerd. Voeg GEMINI_API_KEY toe aan je environment variables.',
+          hint: 'Voor audio transcriptie is een Gemini API key vereist',
+          debug: 'Environment variable GEMINI_API_KEY is not set'
         }, 
         { status: 500 }
       )
@@ -27,40 +30,60 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type
+    // Validate file type (Gemini supported formats)
     const allowedTypes = [
-      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a', 
-      'audio/aac', 'audio/flac', 'audio/mp4', 'audio/webm'
+      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/aiff', 'audio/aac', 
+      'audio/ogg', 'audio/flac'
     ]
     
-    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(mp3|wav|ogg|m4a|aac|flac|mp4|mpeg|mpga|webm)$/i)) {
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(mp3|wav|aiff|aac|ogg|flac|mpeg|mpga)$/i)) {
       return NextResponse.json(
-        { error: 'Niet ondersteund audio formaat. Ondersteunde formaten: MP3, WAV, OGG, M4A, AAC, FLAC, MP4, WEBM' },
+        { error: 'Niet ondersteund audio formaat. Ondersteunde formaten: MP3, WAV, AIFF, AAC, OGG, FLAC' },
         { status: 400 }
       )
     }
 
-    // Check file size (OpenAI limit is 25MB)
-    const maxSize = 25 * 1024 * 1024 // 25MB
+    // Check file size (Gemini limit is 20MB)
+    const maxSize = 20 * 1024 * 1024 // 20MB
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'Audio bestand te groot. Maximum grootte is 25MB.' },
+        { error: 'Audio bestand te groot. Maximum grootte is 20MB.' },
         { status: 400 }
       )
     }
 
     try {
-      // Initialize OpenAI client
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
+      // Convert file to base64
+      const arrayBuffer = await file.arrayBuffer()
+      const base64Audio = Buffer.from(arrayBuffer).toString('base64')
+
+      console.log('🎵 Starting Gemini audio transcription...', {
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type
       })
 
-      // Create transcription using OpenAI Whisper
-      const transcription = await openai.audio.transcriptions.create({
-        file: file,
-        model: 'whisper-1',
-        language: 'nl', // Dutch language hint, but Whisper auto-detects
-        response_format: 'text',
+      // Initialize Gemini model (2.5 Flash supports audio)
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
+      // Create audio part for Gemini
+      const audioPart = {
+        inlineData: {
+          data: base64Audio,
+          mimeType: file.type || 'audio/mpeg'
+        }
+      }
+
+      // Create transcription request with Dutch language prompt
+      const prompt = "Transcribeer deze audio naar Nederlandse tekst. Geef alleen de getranscribeerde tekst terug, zonder extra commentaar."
+      
+      const result = await model.generateContent([prompt, audioPart])
+      const response = await result.response
+      const transcription = response.text()
+
+      console.log('✅ Gemini audio transcription successful', {
+        transcriptionLength: transcription.length,
+        fileName: file.name
       })
 
       return NextResponse.json({
@@ -68,23 +91,31 @@ export async function POST(request: NextRequest) {
         transcription: transcription,
         fileName: file.name,
         fileSize: file.size,
-        message: 'Audio succesvol getranscribeerd'
+        engine: 'Gemini 2.5 Flash',
+        message: 'Audio succesvol getranscribeerd met Gemini AI'
       })
 
     } catch (transcriptionError: any) {
-      console.error('OpenAI Whisper transcription error:', transcriptionError)
+      console.error('Gemini audio transcription error:', transcriptionError)
       
-      // Handle specific OpenAI errors
-      if (transcriptionError?.status === 400) {
+      // Handle specific Gemini errors
+      if (transcriptionError?.message?.includes('quota')) {
         return NextResponse.json(
-          { error: 'Audio bestand kan niet verwerkt worden. Controleer het formaat en probeer opnieuw.' },
-          { status: 400 }
+          { error: 'Gemini API quota overschreden. Probeer later opnieuw.' },
+          { status: 429 }
         )
       }
       
-      if (transcriptionError?.status === 413) {
+      if (transcriptionError?.message?.includes('unsupported')) {
         return NextResponse.json(
-          { error: 'Audio bestand te groot voor transcriptie.' },
+          { error: 'Audio formaat niet ondersteund door Gemini. Probeer MP3, WAV of AAC.' },
+          { status: 400 }
+        )
+      }
+
+      if (transcriptionError?.message?.includes('size')) {
+        return NextResponse.json(
+          { error: 'Audio bestand te groot voor Gemini transcriptie (max 20MB).' },
           { status: 413 }
         )
       }
@@ -92,8 +123,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Fout bij audio transcriptie',
-          details: transcriptionError?.message || 'Onbekende fout bij OpenAI Whisper',
-          hint: 'Controleer of het audio bestand geldig is'
+          details: transcriptionError?.message || 'Onbekende fout bij Gemini audio transcriptie',
+          hint: 'Controleer of het audio bestand geldig is en probeer een kleiner bestand'
         },
         { status: 500 }
       )
@@ -108,7 +139,8 @@ export async function POST(request: NextRequest) {
       { 
         error: 'Er is een fout opgetreden bij het verwerken van het audio bestand',
         details: errorMessage,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        engine: 'Gemini AI'
       },
       { status: 500 }
     )

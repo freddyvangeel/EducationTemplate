@@ -40,13 +40,11 @@
 
 | Variable | Value | Required | Purpose |
 |----------|-------|----------|---------|
-| `GEMINI_API_KEY` | `gai_xxxxxxx` | ✅ Yes | Core AI functionality + TTS |
-| `OPENAI_API_KEY` | `sk-proj-xxx` | ❌ Optional | Audio transcription |
+| `GEMINI_API_KEY` | `gai_xxxxxxx` | ✅ Yes | Alle AI functionaliteiten (Chat, TTS, Audio transcriptie) |
 | `NODE_ENV` | `production` | ✅ Auto-set | Production optimizations |
 
 🔑 **API Key Sources:**
-- **Gemini**: [Google AI Studio](https://makersuite.google.com/app/apikey)
-- **OpenAI**: [Platform.openai.com](https://platform.openai.com/api-keys)
+- **Gemini**: [Google AI Studio](https://makersuite.google.com/app/apikey) - Alle functionaliteiten
 
 ## 🚀 Function Configuration
 

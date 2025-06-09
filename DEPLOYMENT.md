@@ -26,14 +26,8 @@ Ga direct naar je Netlify dashboard en controleer:
 - **Value:** jouw_echte_gemini_api_key
 - **Scope:** Alle scopes
 
-**OPTIONEEL (voor audio transcriptie):**
-- **Key:** `OPENAI_API_KEY`  
-- **Value:** jouw_openai_api_key
-- **Scope:** Alle scopes
-
 🔑 **API Keys verkrijgen:**
-- [Gemini API Key](https://makersuite.google.com/app/apikey) - Google AI Studio
-- [OpenAI API Key](https://platform.openai.com/api-keys) - OpenAI Platform
+- [Gemini API Key](https://makersuite.google.com/app/apikey) - Google AI Studio (alle functionaliteiten)
 
 ### Stap 4: Redeploy & Test
 Na het instellen van de API keys:
@@ -46,8 +40,7 @@ Na het instellen van de API keys:
 Het project gebruikt deze kritische dependencies:
 ```json
 {
-  "@google/generative-ai": "^0.21.0",    // Gemini API (alle modellen + TTS)
-  "openai": "^5.1.1",                    // Whisper transcriptie
+  "@google/generative-ai": "^0.21.0",    // Gemini API (alle modellen + TTS + audio transcriptie)
   "mammoth": "^1.9.1",                   // DOCX verwerking
   "pdf-parse": "^1.1.1",                 // PDF verwerking
   "docx": "^9.5.0",                      // Word document export
@@ -59,7 +52,7 @@ Het project gebruikt deze kritische dependencies:
 Voor nieuwe TTS en streaming features:
 - **Gemini TTS:** 5-15 seconden response tijd
 - **Streaming responses:** Real-time data flow
-- **Audio transcription:** Max 25MB (OpenAI limit)
+- **Audio transcription:** Max 20MB (Gemini limit)
 - **Document processing:** Max 10MB aanbevolen
 - **TTS audio generation:** ~5MB WAV files gemiddeld
 
@@ -92,12 +85,12 @@ Voor nieuwe TTS en streaming features:
 4. Test verschillende stemmen (sommige kunnen tijdelijk unavailable zijn)
 
 #### Probleem: Audio Transcriptie Faalt
-**Symptomen:** "OpenAI API key niet geconfigureerd" of transcriptie errors
+**Symptomen:** "Gemini API key niet geconfigureerd" of transcriptie errors
 **Oplossing:**
-1. Voeg `OPENAI_API_KEY` toe aan environment variables
-2. Check OpenAI account heeft credit balance
-3. Test met kleinere audio files (< 5MB)
-4. Ondersteunde formaten: MP3, WAV, OGG, M4A, AAC, FLAC
+1. Check `GEMINI_API_KEY` is correct ingesteld
+2. Test met kleinere audio files (< 5MB)
+3. Ondersteunde formaten: MP3, WAV, AIFF, AAC, OGG, FLAC
+4. Check Gemini API quota en billing status
 
 #### Probleem: Streaming Responses Hangen
 **Symptomen:** Response start maar stopt halverwege

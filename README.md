@@ -11,7 +11,7 @@ Een geavanceerde Next.js template die **alles** biedt wat je nodig hebt voor inn
 ### 🎯 **Core AI Functionaliteiten**
 - 🧠 **Multi-Model AI**: Gemini 2.5 Pro, 2.5 Flash, en 2.0 Flash met internet toegang
 - 🌐 **Real-time Internet Access**: Gemini 2.0 Flash met Google Search integration
-- 🎵 **Audio Transcriptie**: OpenAI Whisper voor speech-to-text
+- 🎵 **Audio Transcriptie**: Gemini 2.5 Flash voor speech-to-text
 - 📸 **Multi-Image Analysis**: Meerdere afbeeldingen tegelijk analyseren
 - 💬 **Markdown Rendering**: Perfecte opmaak van AI responses
 - 🗣️ **Spraakherkenning**: Browser native voice input
@@ -53,10 +53,9 @@ Een geavanceerde Next.js template die **alles** biedt wat je nodig hebt voor inn
 ## 🚀 Quick Start: Van 0 naar AI in 5 Minuten!
 
 ### Stap 1: 🔑 API Keys Verkrijgen
-**Vereist:** [Gemini API Key](https://makersuite.google.com/app/apikey) (gratis)  
-**Optioneel:** [OpenAI API Key](https://platform.openai.com/api-keys) (voor audio transcriptie)
+**Vereist:** [Gemini API Key](https://makersuite.google.com/app/apikey) (gratis)
 
-⚠️ **Kosten**: Gemini heeft een gratis tier. OpenAI Whisper kost ~$0.006 per minuut audio.
+⚠️ **Kosten**: Gemini heeft een genereuze gratis tier voor alle functionaliteiten inclusief audio transcriptie.
 
 ### Stap 2: 🛠️ Project Setup
 ```bash
@@ -76,11 +75,8 @@ cp .env.example .env.local
 Maak `.env.local` aan met je API keys:
 
 ```env
-# VEREIST: Voor Gemini AI functionaliteit
+# VEREIST: Voor alle Gemini AI functionaliteiten (inclusief audio transcriptie)
 GEMINI_API_KEY=your_gemini_api_key_here
-
-# OPTIONEEL: Voor audio transcriptie met Whisper
-OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 ### Stap 4: 🎉 Start & Test
@@ -93,8 +89,7 @@ npm run dev
 ### Stap 5: 🚀 Deploy naar Netlify
 1. **In Bolt.new**: "Deploy to Netlify"
 2. **Environment Variables toevoegen** in Netlify dashboard:
-   - `GEMINI_API_KEY` (vereist)
-   - `OPENAI_API_KEY` (optioneel)
+   - `GEMINI_API_KEY` (vereist voor alle functionaliteiten)
 3. **Deploy** en je app is live!
 
 ## 📋 Volledige Feature Demonstratie
@@ -133,12 +128,12 @@ npm run dev
 
 ### 🎵 **Audio Processing Pipeline**
 ```
-Audio Upload → Whisper Transcriptie → Gemini Analyse → Markdown Response → TTS Output
+Audio Upload → Gemini Transcriptie → Gemini Analyse → Markdown Response → TTS Output
 ```
-- Ondersteunt 10+ audio formaten
-- Automatische taaldetectie (Nederlands hint)
-- Tot 25MB bestanden
-- Perfecte transcriptie kwaliteit
+- Ondersteunt 6 audio formaten (MP3, WAV, AIFF, AAC, OGG, FLAC)
+- Nederlandse prompt voor optimale transcriptie
+- Tot 20MB bestanden
+- Perfecte transcriptie kwaliteit met Gemini 2.5 Flash
 
 ### 📁 **Smart File Management**
 - **Visual File Manager**: Grid view met previews
@@ -193,7 +188,7 @@ Audio Upload → Whisper Transcriptie → Gemini Analyse → Markdown Response �
 | Category | Formats | Processing | Max Size |
 |----------|---------|------------|----------|
 | 📸 **Images** | JPG, PNG, GIF, WebP, BMP | Gemini Vision | 20MB |
-| 🎵 **Audio** | MP3, WAV, OGG, M4A, AAC, FLAC, MP4, WebM | OpenAI Whisper | 25MB |
+| 🎵 **Audio** | MP3, WAV, AIFF, AAC, OGG, FLAC | Gemini 2.5 Flash | 20MB |
 | 📄 **Documents** | PDF, DOCX, TXT, MD | Text Extraction | 10MB |
 | 📊 **Data** | CSV, JSON | Structure Parsing | 5MB |
 
@@ -225,15 +220,13 @@ const [selectedGeminiVoice, setSelectedGeminiVoice] = useState(GEMINI_VOICES[3])
 const [selectedGeminiEmotion, setSelectedGeminiEmotion] = useState(EMOTION_STYLES[0]) // Neutraal
 ```
 
-### 🎵 **Whisper Configuration**
+### 🎵 **Gemini Audio Transcriptie Configuration**
 ```typescript
 // src/app/api/transcribe-audio/route.ts
-const transcription = await openai.audio.transcriptions.create({
-  file: file,
-  model: 'whisper-1',
-  language: 'nl',              // Taal hint (auto-detect)
-  response_format: 'text',     // Of: 'json', 'srt', 'vtt'
-});
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+const prompt = "Transcribeer deze audio naar Nederlandse tekst. Geef alleen de getranscribeerde tekst terug, zonder extra commentaar."
+const result = await model.generateContent([prompt, audioPart])
+const transcription = result.response.text()
 ```
 
 ## 🌐 Production Deployment
