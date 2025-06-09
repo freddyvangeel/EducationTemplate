@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import MarkdownRenderer from './MarkdownRenderer'
 import ResponseActions from './ResponseActions'
+import CameraCapture from './CameraCapture'
 
 interface ToetsConfig {
   vraagType: string
@@ -12,6 +13,17 @@ interface ToetsConfig {
   metCasus: boolean
   onderwerp: string
   contextTekst: string
+}
+
+interface UploadedFile {
+  id: string
+  name: string
+  type: 'image' | 'document' | 'data' | 'audio'
+  preview: string | null
+  content: string
+  size: number
+  uploadedAt: Date
+  selected: boolean
 }
 
 export default function ToetsGenerator() {
@@ -30,8 +42,20 @@ export default function ToetsGenerator() {
   const [streamingResponse, setStreamingResponse] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   
+  // Verbeterfunctie states
+  const [verbeterTekst, setVerbeterTekst] = useState('')
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [isVerbeteringGenerating, setIsVerbeteringGenerating] = useState(false)
+  const [verbeterdeToets, setVerbeterdeToets] = useState('')
+  const [verbeterStreamingResponse, setVerbeterStreamingResponse] = useState('')
+  const [isVerbeteringStreaming, setIsVerbeteringStreaming] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+  
   const abortControllerRef = useRef<AbortController | null>(null)
+  const verbeterAbortControllerRef = useRef<AbortController | null>(null)
   const currentStreamingResponseRef = useRef<string>('')
+  const currentVerbeterStreamingResponseRef = useRef<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const vraagTypes = [
     { id: 'meerkeuze', label: 'Meerkeuzevragen (A, B, C, D)', icon: '📝' },
@@ -67,6 +91,227 @@ export default function ToetsGenerator() {
         ? prev.bloomNiveaus.filter(id => id !== niveauId)
         : [...prev.bloomNiveaus, niveauId]
     }))
+  }
+
+  // File management functions
+  const generateFileId = () => `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+  const addUploadedFile = (file: UploadedFile) => {
+    setUploadedFiles(prev => [...prev, file])
+  }
+
+  const removeUploadedFile = (id: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== id))
+  }
+
+  const toggleFileSelection = (id: string) => {
+    setUploadedFiles(prev => 
+      prev.map(file => 
+        file.id === id ? { ...file, selected: !file.selected } : file
+      )
+    )
+  }
+
+  const getSelectedFiles = () => uploadedFiles.filter(file => file.selected)
+
+  const handleCameraCapture = (imageData: string, blob: Blob) => {
+    const uploadedFile: UploadedFile = {
+      id: generateFileId(),
+      name: `Camera_${new Date().toLocaleTimeString()}.jpg`,
+      type: 'image',
+      preview: imageData,
+      content: imageData,
+      size: blob.size,
+      uploadedAt: new Date(),
+      selected: true
+    }
+    
+    addUploadedFile(uploadedFile)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      for (const file of files) {
+        await handleSingleFileUpload(file)
+      }
+    }
+  }
+
+  const handleSingleFileUpload = async (file: File) => {
+    const fileName = file.name.toLowerCase()
+    const fileType = file.type.toLowerCase()
+    
+    const imageFormats = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
+    const documentFormats = ['docx', 'pdf', 'txt', 'md']
+    const dataFormats = ['csv', 'json']
+    const audioFormats = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'mp4', 'mpeg', 'mpga', 'webm']
+    
+    const extension = fileName.split('.').pop() || ''
+    const isImage = imageFormats.some(format => fileName.endsWith(`.${format}`)) || fileType.startsWith('image/')
+    const isDocument = documentFormats.some(format => fileName.endsWith(`.${format}`))
+    const isData = dataFormats.some(format => fileName.endsWith(`.${format}`))
+    const isAudio = audioFormats.some(format => fileName.endsWith(`.${format}`)) || fileType.startsWith('audio/')
+    
+    if (!isImage && !isDocument && !isData && !isAudio) {
+      alert(`Bestandstype niet ondersteund!\n\nOndersteunde formaten:\n📸 Afbeeldingen: ${imageFormats.join(', ')}\n📄 Documenten: ${documentFormats.join(', ')}\n📊 Data: ${dataFormats.join(', ')}\n🎵 Audio: ${audioFormats.join(', ')}`)
+      return
+    }
+
+    try {
+      if (isImage) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const result = e.target?.result as string
+          
+          const uploadedFile: UploadedFile = {
+            id: generateFileId(),
+            name: file.name,
+            type: 'image',
+            preview: result,
+            content: result,
+            size: file.size,
+            uploadedAt: new Date(),
+            selected: true
+          }
+          
+          addUploadedFile(uploadedFile)
+        }
+        reader.readAsDataURL(file)
+        return
+      }
+      
+      if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const content = e.target?.result as string
+          
+          const uploadedFile: UploadedFile = {
+            id: generateFileId(),
+            name: file.name,
+            type: 'document',
+            preview: content.length > 100 ? content.substring(0, 100) + '...' : content,
+            content: content,
+            size: file.size,
+            uploadedAt: new Date(),
+            selected: true
+          }
+          
+          addUploadedFile(uploadedFile)
+        }
+        reader.readAsText(file, 'UTF-8')
+        return
+      }
+      
+      if (fileName.endsWith('.json')) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          try {
+            const content = e.target?.result as string
+            const jsonData = JSON.parse(content)
+            const formattedContent = JSON.stringify(jsonData, null, 2)
+            
+            const uploadedFile: UploadedFile = {
+              id: generateFileId(),
+              name: file.name,
+              type: 'data',
+              preview: formattedContent.length > 100 ? formattedContent.substring(0, 100) + '...' : formattedContent,
+              content: formattedContent,
+              size: file.size,
+              uploadedAt: new Date(),
+              selected: true
+            }
+            
+            addUploadedFile(uploadedFile)
+          } catch (error) {
+            alert('Ongeldig JSON bestand')
+          }
+        }
+        reader.readAsText(file, 'UTF-8')
+        return
+      }
+      
+      if (isAudio) {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        try {
+          const response = await fetch('/api/transcribe-audio', {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Transcriptie mislukt')
+          }
+
+          const data = await response.json()
+          
+          const uploadedFile: UploadedFile = {
+            id: generateFileId(),
+            name: file.name,
+            type: 'audio',
+            preview: data.transcription.length > 100 ? data.transcription.substring(0, 100) + '...' : data.transcription,
+            content: data.transcription,
+            size: file.size,
+            uploadedAt: new Date(),
+            selected: true
+          }
+          
+          addUploadedFile(uploadedFile)
+        } catch (error) {
+          console.error('Audio transcription error:', error)
+          alert('Fout bij audio transcriptie: ' + (error instanceof Error ? error.message : 'Onbekende fout'))
+        }
+        return
+      }
+      
+      // Handle other documents (PDF, DOCX, CSV) via server upload
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload-docx', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Upload failed')
+      }
+
+      const data = await response.json()
+      
+      const uploadedFile: UploadedFile = {
+        id: generateFileId(),
+        name: file.name,
+        type: fileName.endsWith('.csv') ? 'data' : 'document',
+        preview: data.content.length > 100 ? data.content.substring(0, 100) + '...' : data.content,
+        content: data.content,
+        size: file.size,
+        uploadedAt: new Date(),
+        selected: true
+      }
+      
+      addUploadedFile(uploadedFile)
+    } catch (error) {
+      console.error('File upload error:', error)
+      alert('Fout bij uploaden: ' + (error instanceof Error ? error.message : 'Onbekende fout'))
+    }
   }
 
   const generatePrompt = (): string => {
@@ -129,6 +374,7 @@ Maak nu de toets volgens deze specificaties. Zorg voor een goede mix van moeilij
     setIsStreaming(true)
     setStreamingResponse('')
     setGeneratedToets('')
+    setVerbeterdeToets('') // Reset verbeterde versie
     currentStreamingResponseRef.current = ''
 
     abortControllerRef.current = new AbortController()
@@ -141,7 +387,7 @@ Maak nu de toets volgens deze specificaties. Zorg voor een goede mix van moeilij
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          aiModel: 'smart', // Gebruik 2.5 Flash zoals gevraagd
+          aiModel: 'smart',
           useGrounding: false
         }),
         signal: abortControllerRef.current.signal
@@ -214,6 +460,141 @@ Maak nu de toets volgens deze specificaties. Zorg voor een goede mix van moeilij
     }
   }
 
+  const generateVerbeterdeToets = async () => {
+    if (!verbeterTekst.trim() && getSelectedFiles().length === 0) {
+      alert('Vul eerst in wat je wilt verbeteren of voeg bestanden toe!')
+      return
+    }
+
+    setIsVerbeteringGenerating(true)
+    setIsVerbeteringStreaming(true)
+    setVerbeterStreamingResponse('')
+    setVerbeterdeToets('')
+    currentVerbeterStreamingResponseRef.current = ''
+
+    verbeterAbortControllerRef.current = new AbortController()
+
+    try {
+      const selectedFiles = getSelectedFiles()
+      let verbeterPrompt = `Je bent een expert toetsmaker. Hieronder staat de originele toets die je hebt gemaakt. De gebruiker wil verbeteringen. Maak een VERBETERDE VERSIE 2.0 van de toets op basis van de feedback.
+
+**ORIGINELE TOETS:**
+${generatedToets}
+
+**VERBETERVERZOEK VAN GEBRUIKER:**
+${verbeterTekst}
+
+**INSTRUCTIES:**
+1. Analyseer de feedback zorgvuldig
+2. Behoud de goede aspecten van de originele toets
+3. Implementeer de gevraagde verbeteringen
+4. Zorg dat de toets nog steeds voldoet aan de oorspronkelijke specificaties
+5. Geef duidelijk aan wat je hebt verbeterd
+
+Maak nu de verbeterde versie 2.0 van de toets:`
+
+      // Add file context if files are selected
+      if (selectedFiles.length > 0) {
+        const fileContexts = selectedFiles.map((file, index) => {
+          const fileType = file.type === 'image' ? 'Afbeelding' : 
+                          file.type === 'document' ? 'Document' : 
+                          file.type === 'audio' ? 'Audio Transcriptie' : 'Data'
+          if (file.type === 'image') {
+            return `[${fileType} ${index + 1}: ${file.name}]\n[Afbeelding bijgevoegd voor analyse]`
+          } else {
+            return `[${fileType}: ${file.name}]\n${file.content}`
+          }
+        }).join('\n\n---\n\n')
+        
+        verbeterPrompt += `\n\n**BIJGEVOEGDE BESTANDEN VOOR CONTEXT:**\n${fileContexts}`
+      }
+
+      const payload: any = { 
+        message: verbeterPrompt,
+        aiModel: 'smart',
+        useGrounding: false
+      }
+
+      // Add selected images for Gemini Vision
+      const selectedImages = selectedFiles.filter(file => file.type === 'image')
+      if (selectedImages.length > 0) {
+        payload.images = selectedImages.map(img => img.content)
+      }
+
+      const response = await fetch('/api/chat-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: verbeterAbortControllerRef.current.signal
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No readable stream available')
+      }
+
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              
+              if (data.error) {
+                throw new Error(data.message || 'Streaming error')
+              }
+              
+              if (data.done) {
+                setIsVerbeteringStreaming(false)
+                setVerbeterdeToets(currentVerbeterStreamingResponseRef.current)
+                return
+              }
+              
+              if (data.token) {
+                const newResponse = currentVerbeterStreamingResponseRef.current + data.token
+                currentVerbeterStreamingResponseRef.current = newResponse
+                setVerbeterStreamingResponse(newResponse)
+              }
+            } catch (parseError) {
+              console.error('Error parsing streaming data:', parseError)
+            }
+          }
+        }
+      }
+
+    } catch (error: any) {
+      console.error('Verbetering generatie error:', error)
+      
+      if (error.name === 'AbortError') {
+        if (!currentVerbeterStreamingResponseRef.current) {
+          setVerbeterdeToets('Verbetering gestopt door gebruiker.')
+        } else {
+          setVerbeterdeToets(currentVerbeterStreamingResponseRef.current)
+        }
+      } else {
+        setVerbeterdeToets('Error: ' + (error instanceof Error ? error.message : 'Onbekende fout'))
+      }
+    } finally {
+      setIsVerbeteringGenerating(false)
+      setIsVerbeteringStreaming(false)
+      verbeterAbortControllerRef.current = null
+    }
+  }
+
   const resetGenerator = () => {
     setConfig({
       vraagType: 'meerkeuze',
@@ -226,11 +607,21 @@ Maak nu de toets volgens deze specificaties. Zorg voor een goede mix van moeilij
     })
     setGeneratedToets('')
     setStreamingResponse('')
+    setVerbeterdeToets('')
+    setVerbeterStreamingResponse('')
+    setVerbeterTekst('')
+    setUploadedFiles([])
   }
 
   const stopGeneration = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
+    }
+  }
+
+  const stopVerbeteringGeneration = () => {
+    if (verbeterAbortControllerRef.current) {
+      verbeterAbortControllerRef.current.abort()
     }
   }
 
@@ -456,67 +847,294 @@ Maak nu de toets volgens deze specificaties. Zorg voor een goede mix van moeilij
         </div>
       ) : (
         /* Generated Content */
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold text-gray-800">
-              {isStreaming ? '🔄 Toets wordt gegenereerd...' : '✅ Jouw Professionele Toets is Klaar!'}
-            </h2>
-            <div className="flex items-center space-x-3">
-              {isStreaming && (
+        <div className="space-y-8">
+          {/* Original Generated Toets */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold text-gray-800">
+                {isStreaming ? '🔄 Toets wordt gegenereerd...' : '✅ Jouw Professionele Toets is Klaar!'}
+              </h2>
+              <div className="flex items-center space-x-3">
+                {isStreaming && (
+                  <button
+                    onClick={stopGeneration}
+                    className="px-4 py-2 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+                  >
+                    ⏹️ Stop
+                  </button>
+                )}
                 <button
-                  onClick={stopGeneration}
-                  className="px-4 py-2 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+                  onClick={resetGenerator}
+                  className="px-6 py-2 text-purple-600 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors font-medium"
                 >
-                  ⏹️ Stop
+                  🔄 Nieuwe Toets
                 </button>
-              )}
-              <button
-                onClick={resetGenerator}
-                className="px-6 py-2 text-purple-600 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors font-medium"
-              >
-                🔄 Nieuwe Toets
-              </button>
-            </div>
-          </div>
-
-          {/* Streaming Status */}
-          {isStreaming && (
-            <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl">
-              <div className="flex items-center space-x-4">
-                <div className="flex space-x-1">
-                  <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
-                  <div className="w-4 h-4 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                  <div className="w-4 h-4 bg-indigo-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                </div>
-                <span className="text-blue-700 font-bold text-lg">Gemini 2.5 Flash genereert je toets...</span>
               </div>
-              <p className="text-blue-600 mt-3">
-                De AI analyseert je specificaties en creëert kwalitatieve toetsvragen volgens de hoogste onderwijsstandaarden ✨
-              </p>
             </div>
-          )}
 
-          {/* Generated Content Display */}
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-            <MarkdownRenderer 
-              content={isStreaming ? streamingResponse : generatedToets}
-              className="text-gray-700"
-            />
+            {/* Streaming Status */}
             {isStreaming && (
-              <span className="inline-block w-2 h-5 bg-purple-600 animate-pulse ml-1 align-text-bottom"></span>
+              <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl">
+                <div className="flex items-center space-x-4">
+                  <div className="flex space-x-1">
+                    <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
+                    <div className="w-4 h-4 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-4 h-4 bg-indigo-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                  </div>
+                  <span className="text-blue-700 font-bold text-lg">Gemini 2.5 Flash genereert je toets...</span>
+                </div>
+                <p className="text-blue-600 mt-3">
+                  De AI analyseert je specificaties en creëert kwalitatieve toetsvragen volgens de hoogste onderwijsstandaarden ✨
+                </p>
+              </div>
+            )}
+
+            {/* Generated Content Display */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+              <MarkdownRenderer 
+                content={isStreaming ? streamingResponse : generatedToets}
+                className="text-gray-700"
+              />
+              {isStreaming && (
+                <span className="inline-block w-2 h-5 bg-purple-600 animate-pulse ml-1 align-text-bottom"></span>
+              )}
+            </div>
+
+            {/* Response Actions */}
+            {!isStreaming && generatedToets && (
+              <ResponseActions 
+                content={generatedToets}
+                isMarkdown={true}
+                isStreaming={false}
+              />
             )}
           </div>
 
-          {/* Response Actions */}
+          {/* Verbeterfunctie */}
           {!isStreaming && generatedToets && (
-            <ResponseActions 
-              content={generatedToets}
-              isMarkdown={true}
-              isStreaming={false}
-            />
+            <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+              <h3 className="text-2xl font-bold text-orange-600 mb-4 flex items-center">
+                <span className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3 text-lg">🔧</span>
+                Wil je nog wat dingen verbeterd zien?
+              </h3>
+
+              {/* File Manager voor verbeteringen */}
+              {uploadedFiles.length > 0 && (
+                <div className="bg-orange-50 rounded-lg border border-orange-200 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-orange-800 flex items-center">
+                      <span className="w-4 h-4 bg-orange-600 rounded-full flex items-center justify-center mr-2">
+                        <span className="text-white text-xs">📁</span>
+                      </span>
+                      Bijgevoegde Bestanden ({uploadedFiles.length})
+                    </h4>
+                    <span className="text-xs text-gray-500">
+                      {getSelectedFiles().length} geselecteerd
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {uploadedFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        className={`border rounded-lg p-3 transition-all cursor-pointer ${
+                          file.selected 
+                            ? 'border-orange-500 bg-orange-50' 
+                            : 'border-gray-200 hover:border-orange-300'
+                        }`}
+                        onClick={() => toggleFileSelection(file.id)}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={file.selected}
+                              onChange={() => toggleFileSelection(file.id)}
+                              className="rounded text-orange-600"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className="text-lg">
+                              {file.type === 'image' ? '📸' : file.type === 'document' ? '📄' : file.type === 'audio' ? '🎵' : '📊'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removeUploadedFile(file.id)
+                            }}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                            title="Verwijder bestand"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        
+                        {file.type === 'image' && file.preview && (
+                          <div className="mb-2">
+                            <img 
+                              src={file.preview} 
+                              alt={file.name}
+                              className="w-full h-20 object-cover rounded"
+                            />
+                          </div>
+                        )}
+                        
+                        <div className="text-xs text-gray-700">
+                          <p className="font-medium truncate" title={file.name}>
+                            {file.name}
+                          </p>
+                          <p className="text-gray-500">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </p>
+                          {file.type !== 'image' && (
+                            <p className="text-gray-600 mt-1 line-clamp-2">
+                              {file.preview}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Input Area voor verbeteringen */}
+              <div className={`bg-orange-50 rounded-lg border transition-all duration-200 p-4 ${
+                isDragOver 
+                  ? 'border-orange-500 border-2 bg-orange-100' 
+                  : 'border-orange-200'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}>
+
+                {/* Drag & Drop Overlay */}
+                {isDragOver && (
+                  <div className="absolute inset-2 border-2 border-dashed border-orange-400 rounded-lg bg-orange-50 bg-opacity-90 flex items-center justify-center z-10">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📁</div>
+                      <p className="text-orange-700 font-semibold">Drop bestanden hier</p>
+                      <p className="text-orange-600 text-sm">Voor extra context bij verbeteringen</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-end space-x-3">
+                  <div className="flex-1">
+                    <textarea
+                      value={verbeterTekst}
+                      onChange={(e) => setVerbeterTekst(e.target.value)}
+                      placeholder="Beschrijf wat je wilt verbeteren aan de toets. Bijvoorbeeld: 'Maak de vragen moeilijker', 'Voeg meer praktijkvoorbeelden toe', 'Verander vraag 3 naar een open vraag', etc."
+                      className="w-full p-3 border-0 resize-none focus:outline-none bg-transparent"
+                      rows={3}
+                      disabled={isVerbeteringGenerating}
+                    />
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-2">
+                    {/* File Upload Button */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isVerbeteringGenerating}
+                      className="p-2 text-gray-500 hover:text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
+                      title="Bestand uploaden voor extra context"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                    </button>
+                    
+                    {/* Camera Button */}
+                    <CameraCapture 
+                      onCapture={handleCameraCapture}
+                      disabled={isVerbeteringGenerating}
+                    />
+                    
+                    {/* Generate Button */}
+                    <button
+                      onClick={generateVerbeterdeToets}
+                      disabled={isVerbeteringGenerating || (!verbeterTekst.trim() && getSelectedFiles().length === 0)}
+                      className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    >
+                      {isVerbeteringGenerating ? '🔄' : '🚀 Verbeter Toets'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Verbeterde Toets Display */}
+              {(isVerbeteringStreaming || verbeterdeToets) && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xl font-bold text-green-600 flex items-center">
+                      <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center mr-2 text-sm">✨</span>
+                      {isVerbeteringStreaming ? '🔄 Verbeterde Versie 2.0 wordt gegenereerd...' : '✅ Verbeterde Versie 2.0'}
+                    </h4>
+                    {isVerbeteringStreaming && (
+                      <button
+                        onClick={stopVerbeteringGeneration}
+                        className="px-4 py-2 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors text-sm"
+                      >
+                        ⏹️ Stop
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Streaming Status voor verbetering */}
+                  {isVerbeteringStreaming && (
+                    <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex space-x-1">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                          <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                        </div>
+                        <span className="text-green-700 font-medium">AI implementeert je verbeteringen...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                    <MarkdownRenderer 
+                      content={isVerbeteringStreaming ? verbeterStreamingResponse : verbeterdeToets}
+                      className="text-gray-700"
+                    />
+                    {isVerbeteringStreaming && (
+                      <span className="inline-block w-2 h-5 bg-green-600 animate-pulse ml-1 align-text-bottom"></span>
+                    )}
+                  </div>
+
+                  {/* Response Actions voor verbeterde toets */}
+                  {!isVerbeteringStreaming && verbeterdeToets && (
+                    <ResponseActions 
+                      content={verbeterdeToets}
+                      isMarkdown={true}
+                      isStreaming={false}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".docx,.pdf,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif,.webp,.bmp,image/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.mp4,.mpeg,.mpga,.webm,audio/*"
+        onChange={(e) => {
+          const files = e.target.files
+          if (files && files.length > 0) {
+            Array.from(files).forEach(file => handleSingleFileUpload(file))
+          }
+          e.target.value = ''
+        }}
+        className="hidden"
+      />
 
       {/* Footer */}
       <div className="text-center mt-12">
