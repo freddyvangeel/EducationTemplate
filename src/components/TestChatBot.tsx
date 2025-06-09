@@ -23,6 +23,16 @@ export default function TestChatBot() {
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [isWaitingForStream, setIsWaitingForStream] = useState(false)
+  const [aiModel, setAiModel] = useState<'pro' | 'smart' | 'internet'>('smart') // 'pro' = 2.5 Pro, 'smart' = 2.5 Flash, 'internet' = 2.0
+  const [useGrounding, setUseGrounding] = useState(true)
+  const [groundingData, setGroundingData] = useState<any>(null)
+
+  // Automatically enable grounding when Internet model is selected
+  useEffect(() => {
+    if (aiModel === 'internet') {
+      setUseGrounding(true)
+    }
+  }, [aiModel])
 
   const [isListening, setIsListening] = useState(false)
   const [uploadedContent, setUploadedContent] = useState('')
@@ -488,7 +498,11 @@ export default function TestChatBot() {
     abortControllerRef.current = new AbortController()
 
     try {
-      const payload: any = { message }
+      const payload: any = { 
+        message, 
+        useGrounding: aiModel === 'internet' ? useGrounding : false,
+        aiModel 
+      }
       
       // Add selected files to payload
       if (selectedFiles.length > 0) {
@@ -626,7 +640,11 @@ export default function TestChatBot() {
 
     setIsLoading(true)
     try {
-      const payload: any = { message }
+      const payload: any = { 
+        message, 
+        useGrounding: aiModel === 'internet' ? useGrounding : false,
+        aiModel 
+      }
       
       // Add selected files to payload
       if (selectedFiles.length > 0) {
@@ -670,6 +688,7 @@ export default function TestChatBot() {
 
       const data = await res.json()
       setResponse(data.response)
+      setGroundingData(data.grounding || null)
     } catch (error) {
       console.error('Error:', error)
       setResponse('Error: ' + (error instanceof Error ? error.message : 'Onbekende fout'))
@@ -785,6 +804,120 @@ export default function TestChatBot() {
             </div>
           </div>
         )}
+
+        {/* AI Model Selection Cards */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+          <h3 className="text-gray-800 font-medium mb-3">
+            Kies AI Model
+          </h3>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Pro Model */}
+            <div 
+              className={`relative p-3 rounded-lg border-2 cursor-pointer transition-all group hover:shadow-lg hover:scale-105 ${
+                aiModel === 'pro' 
+                  ? 'border-purple-500 bg-purple-50' 
+                  : 'border-gray-200 hover:border-purple-300'
+              }`}
+              onClick={() => setAiModel('pro')}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className={`w-3 h-3 rounded-full mr-2 ${
+                    aiModel === 'pro' ? 'bg-purple-500' : 'bg-gray-300'
+                  }`} />
+                  <span className="font-medium text-purple-700">🏆 Slimste</span>
+                </div>
+                <span className="text-xs text-purple-600 font-medium">PRO</span>
+              </div>
+              
+              {/* Enhanced Tooltip */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-20 shadow-xl min-w-max">
+                <div className="text-center">
+                  <div className="font-semibold text-purple-300 mb-1">Gemini 2.5 Pro</div>
+                  <div className="text-xs text-gray-300 mb-2">Beste redeneren en complexe taken</div>
+                  <div className="text-xs border-t border-gray-700 pt-2">
+                    <span className="text-green-400">✓ Hoogste kwaliteit</span><br/>
+                    <span className="text-yellow-400">⚠ Langzaamste responses</span><br/>
+                    <span className="text-blue-400">🎯 Beste voor analyses</span>
+                  </div>
+                </div>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
+
+            {/* Smart Model */}
+            <div 
+              className={`relative p-3 rounded-lg border-2 cursor-pointer transition-all group hover:shadow-lg hover:scale-105 ${
+                aiModel === 'smart' 
+                  ? 'border-green-500 bg-green-50' 
+                  : 'border-gray-200 hover:border-green-300'
+              }`}
+              onClick={() => setAiModel('smart')}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className={`w-3 h-3 rounded-full mr-2 ${
+                    aiModel === 'smart' ? 'bg-green-500' : 'bg-gray-300'
+                  }`} />
+                  <span className="font-medium text-green-700">⚡ Slim</span>
+                </div>
+                <span className="text-xs text-green-600 font-medium">FLASH</span>
+              </div>
+              
+              {/* Enhanced Tooltip */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-20 shadow-xl min-w-max">
+                <div className="text-center">
+                  <div className="font-semibold text-green-300 mb-1">Gemini 2.5 Flash</div>
+                  <div className="text-xs text-gray-300 mb-2">Goede balans snelheid & kwaliteit</div>
+                  <div className="text-xs border-t border-gray-700 pt-2">
+                    <span className="text-green-400">✓ Snelle responses</span><br/>
+                    <span className="text-green-400">✓ Goede kwaliteit</span><br/>
+                    <span className="text-blue-400">🎯 Beste voor dagelijks gebruik</span>
+                  </div>
+                </div>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
+
+            {/* Internet Model */}
+            <div 
+              className={`relative p-3 rounded-lg border-2 cursor-pointer transition-all group hover:shadow-lg hover:scale-105 ${
+                aiModel === 'internet' 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 hover:border-blue-300'
+              }`}
+              onClick={() => setAiModel('internet')}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className={`w-3 h-3 rounded-full mr-2 ${
+                    aiModel === 'internet' ? 'bg-blue-500' : 'bg-gray-300'
+                  }`} />
+                  <span className="font-medium text-blue-700">🌐 Internet</span>
+                </div>
+                <span className="text-xs text-blue-600 font-medium">2.0</span>
+              </div>
+              
+              {/* Enhanced Tooltip */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-20 shadow-xl min-w-max">
+                <div className="text-center">
+                  <div className="font-semibold text-blue-300 mb-1">Gemini 2.0 Flash</div>
+                  <div className="text-xs text-gray-300 mb-2">Toegang tot actuele informatie</div>
+                  <div className="text-xs border-t border-gray-700 pt-2">
+                    <span className="text-green-400">✓ Actuele info via Google</span><br/>
+                    <span className="text-green-400">✓ Bronvermelding</span><br/>
+                    <span className="text-yellow-400">⚠ Langzaamste responses</span><br/>
+                    <span className="text-blue-400">🎯 Automatisch Google Search</span>
+                  </div>
+                </div>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
+          </div>
+
+
+        </div>
 
         {/* Input Area */}
         <div className={`bg-white rounded-lg border transition-all duration-200 p-3 ${
@@ -975,6 +1108,58 @@ export default function TestChatBot() {
                 isMarkdown={true}
                 isStreaming={isStreaming}
               />
+            )}
+
+            {/* Grounding Sources - show if available */}
+            {groundingData && groundingData.isGrounded && !isStreaming && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center mb-3">
+                  <svg className="w-4 h-4 text-blue-600 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
+                  </svg>
+                  <span className="text-blue-800 font-medium text-sm">
+                    Antwoord gebaseerd op actuele Google Search resultaten
+                  </span>
+                </div>
+                
+                {groundingData.searchQueries && groundingData.searchQueries.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-blue-700 text-xs font-medium mb-1">Zoekopdrachten:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {groundingData.searchQueries.map((query: string, index: number) => (
+                        <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                          "{query}"
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {groundingData.sources && groundingData.sources.length > 0 && (
+                  <div>
+                    <p className="text-blue-700 text-xs font-medium mb-2">Bronnen:</p>
+                    <div className="space-y-2">
+                      {groundingData.sources.slice(0, 3).map((source: any, index: number) => (
+                        <div key={index} className="bg-white p-2 rounded border border-blue-200">
+                          <a 
+                            href={source.uri} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                          >
+                            {source.title}
+                          </a>
+                          {source.snippet && (
+                            <p className="text-gray-600 text-xs mt-1 line-clamp-2">
+                              {source.snippet}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
           </div>

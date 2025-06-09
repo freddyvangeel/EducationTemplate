@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenerativeAI, Tool } from '@google/generative-ai'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Initialiseer de Gemini AI client
@@ -8,6 +8,11 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 function base64ToBuffer(base64: string): Buffer {
   const base64Data = base64.replace(/^data:image\/\w+;base64,/, '')
   return Buffer.from(base64Data, 'base64')
+}
+
+// Google Search tool configuratie
+const googleSearchTool = {
+  googleSearch: {}
 }
 
 export async function POST(request: NextRequest) {
@@ -26,7 +31,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Haal de bericht data op uit de request
-    const { message, image, images } = await request.json()
+    const body = await request.json()
+    console.log('Received request body:', body)
+    
+    const { message, image, images, useGrounding = true, aiModel = 'smart' } = body
 
     if (!message) {
       return NextResponse.json(
@@ -36,17 +44,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Input validatie en sanitization
-    if (typeof message !== 'string' || message.length > 4000) {
+    if (typeof message !== 'string' || message.length > 100000) {
       return NextResponse.json(
-        { error: 'Bericht moet een string zijn van maximaal 4000 karakters' },
+        { error: 'Bericht moet een string zijn van maximaal 100.000 karakters' },
         { status: 400 }
       )
     }
 
-    // Haal het Gemini model op - gebruik het nieuwste model
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' })
+    // Selecteer het juiste model op basis van aiModel
+    const modelName = aiModel === 'pro' ? 'gemini-2.5-pro-preview-06-05' :
+                     aiModel === 'smart' ? 'gemini-2.5-flash-preview-05-20' :
+                     'gemini-2.0-flash-exp' // internet
+    const model = genAI.getGenerativeModel({ model: modelName })
 
+    // Configureer tools array - grounding alleen voor Gemini 2.0 (internet model)
+    const tools = (aiModel === 'internet' && useGrounding) ? [googleSearchTool] : []
+    
     let result;
+    
+    // Helper function to generate content with fallback
+    const generateWithFallback = async (requestConfig: any) => {
+      try {
+        return await model.generateContent(requestConfig)
+      } catch (error: any) {
+        // If grounding fails, retry without tools
+        if (useGrounding && (error.message?.includes('Search Grounding is not supported') || 
+                            error.message?.includes('google_search_retrieval is not supported'))) {
+          console.log('Grounding not supported, retrying without grounding...')
+          const { tools, ...configWithoutTools } = requestConfig
+          return await model.generateContent(configWithoutTools)
+        }
+        throw error
+      }
+    }
     
     if (images && images.length > 0) {
       // Meerdere afbeeldingen - gebruik nieuwe images array
@@ -60,7 +90,10 @@ export async function POST(request: NextRequest) {
         }
       })
       
-      result = await model.generateContent([message, ...imageParts])
+      result = await generateWithFallback({
+        contents: [{ role: 'user', parts: [{ text: message }, ...imageParts] }],
+        tools: tools
+      })
     } else if (image) {
       // Backward compatibility - één afbeelding (legacy)
       const imageBuffer = base64ToBuffer(image)
@@ -72,18 +105,38 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      result = await model.generateContent([message, imagePart])
+      result = await generateWithFallback({
+        contents: [{ role: 'user', parts: [{ text: message }, imagePart] }],
+        tools: tools
+      })
     } else {
       // Alleen tekst
-      result = await model.generateContent(message)
+      result = await generateWithFallback({
+        contents: [{ role: 'user', parts: [{ text: message }] }],
+        tools: tools
+      })
     }
 
     const response = await result.response
     const text = response.text()
 
+    // Extract grounding metadata if available
+    const groundingMetadata = response.candidates?.[0]?.groundingMetadata || null
+    const searchQueries = groundingMetadata?.webSearchQueries || []
+    const groundingChuncks = groundingMetadata?.groundingChuncks || []
+
     return NextResponse.json({ 
       response: text,
-      success: true 
+      success: true,
+      grounding: {
+        isGrounded: !!groundingMetadata,
+        searchQueries: searchQueries,
+        sources: groundingChuncks.map((chunk: any) => ({
+          title: chunk.web?.title || 'Unknown',
+          uri: chunk.web?.uri || '',
+          snippet: chunk.web?.snippet || ''
+        }))
+      }
     })
 
   } catch (error) {
