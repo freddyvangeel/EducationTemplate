@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import MarkdownRenderer from './MarkdownRenderer'
 import CameraCapture from './CameraCapture'
+import ResponseActions from './ResponseActions'
 
 interface UploadedFile {
   id: string
@@ -965,6 +966,15 @@ export default function TestChatBot() {
               <p className="text-red-600 text-xs mt-2">
                 Controleer of je API key correct is ingesteld in .env.local
               </p>
+            )}
+            
+            {/* Response Actions - only show for successful responses */}
+            {!(response && response.startsWith('Error:')) && (
+              <ResponseActions 
+                content={isStreaming ? streamingResponse : response}
+                isMarkdown={true}
+                isStreaming={isStreaming}
+              />
             )}
 
           </div>
