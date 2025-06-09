@@ -1,5 +1,6 @@
 import TestChatBot from '@/components/TestChatBot'
 import CopyButton from '@/components/CopyButton'
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -20,6 +21,59 @@ export default function Home() {
           <p className="text-xl text-purple-700 font-medium">
             Dit is een template om met Gemini te werken, gemaakt door Tom Naberink
           </p>
+        </div>
+
+        {/* Quick Access Tools */}
+        <div className="max-w-4xl mx-auto mb-12">
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <h2 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
+              <span className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                🚀
+              </span>
+              AI Tools
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Toetsgenerator Card */}
+              <Link href="/toetsgenerator" className="group">
+                <div className="p-6 border-2 border-purple-200 rounded-xl hover:border-purple-400 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                      <span className="text-2xl">📝</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 group-hover:text-purple-700 transition-colors">
+                        Toetsgenerator
+                      </h3>
+                      <p className="text-gray-600 text-sm">
+                        Genereer professionele toetsen met AI
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-purple-600 text-sm font-medium group-hover:text-purple-700 transition-colors">
+                    Start genereren →
+                  </div>
+                </div>
+              </Link>
+
+              {/* Chat Interface Card */}
+              <div className="p-6 border-2 border-gray-200 rounded-xl">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">💬</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      AI Chat Interface
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Test je API key hieronder
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Main Content */}
