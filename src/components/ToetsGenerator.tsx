@@ -679,7 +679,7 @@ Maak nu de verbeterde versie 2.0 van de toets:`
             <div className="flex items-center space-x-6">
               <input
                 type="range"
-                min="5"
+                min="1"
                 max="50"
                 value={config.aantalVragen}
                 onChange={(e) => setConfig(prev => ({ ...prev, aantalVragen: parseInt(e.target.value) }))}
