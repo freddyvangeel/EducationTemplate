@@ -132,7 +132,7 @@ Audio Upload → Gemini Transcriptie → Gemini Analyse → Markdown Response �
 ```
 - Ondersteunt 6 audio formaten (MP3, WAV, AIFF, AAC, OGG, FLAC)
 - Nederlandse prompt voor optimale transcriptie
-- Tot 20MB bestanden
+- Tot 25MB bestanden (inline data limiet)
 - Perfecte transcriptie kwaliteit met Gemini 2.5 Flash
 
 ### 📁 **Smart File Management**
@@ -188,7 +188,7 @@ Audio Upload → Gemini Transcriptie → Gemini Analyse → Markdown Response �
 | Category | Formats | Processing | Max Size |
 |----------|---------|------------|----------|
 | 📸 **Images** | JPG, PNG, GIF, WebP, BMP | Gemini Vision | 20MB |
-| 🎵 **Audio** | MP3, WAV, AIFF, AAC, OGG, FLAC | Gemini 2.5 Flash | 20MB |
+| 🎵 **Audio** | MP3, WAV, AIFF, AAC, OGG, FLAC | Gemini 2.5 Flash | 25MB |
 | 📄 **Documents** | PDF, DOCX, TXT, MD | Text Extraction | 10MB |
 | 📊 **Data** | CSV, JSON | Structure Parsing | 5MB |
 

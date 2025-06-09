@@ -43,30 +43,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check file size (Gemini limit is 20MB)
-    const maxSize = 20 * 1024 * 1024 // 20MB
+    // Check file size - inline data practical limit is ~25MB due to base64 conversion + memory
+    const maxSize = 25 * 1024 * 1024 // 25MB practical limit for inline data
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'Audio bestand te groot. Maximum grootte is 20MB.' },
+        { 
+          error: 'Audio bestand te groot. Maximum grootte is 25MB.',
+          hint: 'Voor grotere bestanden hebben we Files API ondersteuning nodig',
+          actualSize: `${(file.size / 1024 / 1024).toFixed(1)}MB`
+        },
         { status: 400 }
       )
     }
 
-    try {
-      // Convert file to base64
-      const arrayBuffer = await file.arrayBuffer()
-      const base64Audio = Buffer.from(arrayBuffer).toString('base64')
+    // Warn for large files that might cause issues
+    if (file.size > 20 * 1024 * 1024) {
+      console.warn('⚠️ Large file detected:', {
+        fileName: file.name,
+        fileSize: `${(file.size / 1024 / 1024).toFixed(1)}MB`,
+        message: 'File >20MB may cause memory issues with inline data'
+      })
+    }
 
+    try {
       console.log('🎵 Starting Gemini audio transcription...', {
         fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type
+        fileSize: `${(file.size / 1024 / 1024).toFixed(1)}MB`,
+        mimeType: file.type,
+        method: 'Inline Data (Base64)'
       })
+
+      // Convert file to base64 for inline data
+      const arrayBuffer = await file.arrayBuffer()
+      const base64Audio = Buffer.from(arrayBuffer).toString('base64')
 
       // Initialize Gemini model (2.5 Flash supports audio)
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-      // Create audio part for Gemini
+      // Create audio part for Gemini using inline data
       const audioPart = {
         inlineData: {
           data: base64Audio,
@@ -83,7 +97,8 @@ export async function POST(request: NextRequest) {
 
       console.log('✅ Gemini audio transcription successful', {
         transcriptionLength: transcription.length,
-        fileName: file.name
+        fileName: file.name,
+        fileSize: `${(file.size / 1024 / 1024).toFixed(1)}MB`
       })
 
       return NextResponse.json({
@@ -92,6 +107,7 @@ export async function POST(request: NextRequest) {
         fileName: file.name,
         fileSize: file.size,
         engine: 'Gemini 2.5 Flash',
+        method: 'Inline Data',
         message: 'Audio succesvol getranscribeerd met Gemini AI'
       })
 
@@ -113,18 +129,34 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      if (transcriptionError?.message?.includes('size')) {
+      if (transcriptionError?.message?.includes('size') || transcriptionError?.message?.includes('too large')) {
         return NextResponse.json(
-          { error: 'Audio bestand te groot voor Gemini transcriptie (max 20MB).' },
+          { 
+            error: 'Audio bestand te groot voor Gemini transcriptie (max 25MB).',
+            hint: 'Probeer een kleiner bestand of comprimeer de audio'
+          },
           { status: 413 }
         )
       }
 
+      // Check for memory/payload issues
+      if (transcriptionError?.message?.includes('payload') || transcriptionError?.message?.includes('memory')) {
+        return NextResponse.json(
+          { 
+            error: 'Bestand te groot om te verwerken. Probeer een kleiner audio bestand.',
+            hint: 'Voor bestanden >20MB kunnen er memory issues optreden'
+          },
+          { status: 413 }
+        )
+      }
+
+      // More detailed error info
       return NextResponse.json(
         { 
           error: 'Fout bij audio transcriptie',
           details: transcriptionError?.message || 'Onbekende fout bij Gemini audio transcriptie',
-          hint: 'Controleer of het audio bestand geldig is en probeer een kleiner bestand'
+          hint: 'Controleer of het audio bestand geldig is en probeer een kleiner bestand',
+          stack: transcriptionError?.stack?.substring(0, 500) // First 500 chars of stack trace
         },
         { status: 500 }
       )

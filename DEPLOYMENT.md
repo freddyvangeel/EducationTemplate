@@ -52,7 +52,7 @@ Het project gebruikt deze kritische dependencies:
 Voor nieuwe TTS en streaming features:
 - **Gemini TTS:** 5-15 seconden response tijd
 - **Streaming responses:** Real-time data flow
-- **Audio transcription:** Max 20MB (Gemini limit)
+- **Audio transcription:** Max 60MB (praktische limiet, Gemini ondersteunt tot 2GB)
 - **Document processing:** Max 10MB aanbevolen
 - **TTS audio generation:** ~5MB WAV files gemiddeld
 
@@ -166,7 +166,7 @@ Voor nieuwe TTS en streaming features:
 **Symptomen:** "Only first image processed" of API errors
 **Oplossing:**
 1. Check dat `images[]` array correct verstuurd wordt
-2. Max 20MB per afbeelding (Gemini limit)
+2. Max 60MB per audio bestand (praktische limiet)
 3. Ondersteunde formaten: JPG, PNG, GIF, WebP, BMP
 
 ## 📊 Monitoring & Performance
