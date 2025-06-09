@@ -907,7 +907,7 @@ export default function TestChatBot() {
                   <div className="text-xs border-t border-gray-700 pt-2">
                     <span className="text-green-400">✓ Actuele info via Google</span><br/>
                     <span className="text-green-400">✓ Bronvermelding</span><br/>
-                    <span className="text-yellow-400">⚠ Langzaamste responses</span><br/>
+                    <span className="text-yellow-400">⚠ Minder slim model</span><br/>
                     <span className="text-blue-400">🎯 Automatisch Google Search</span>
                   </div>
                 </div>

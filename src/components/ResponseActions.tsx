@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Document, Paragraph, TextRun } from 'docx'
+import GeminiTTS, { GEMINI_VOICES, EMOTION_STYLES } from './GeminiTTS'
 
 interface ResponseActionsProps {
   content: string
@@ -26,6 +27,10 @@ export default function ResponseActions({
   const [showSpeedControl, setShowSpeedControl] = useState(false)
   const [ttsAttempts, setTtsAttempts] = useState(0)
   const [ttsTimeoutId, setTtsTimeoutId] = useState<NodeJS.Timeout | null>(null)
+  const [useGeminiTTS, setUseGeminiTTS] = useState(false) // Default to Microsoft TTS
+  const [showUniversalSettings, setShowUniversalSettings] = useState(false) // Universal settings dropdown
+  const [selectedGeminiVoice, setSelectedGeminiVoice] = useState(GEMINI_VOICES[3]) // Kore as default
+  const [selectedGeminiEmotion, setSelectedGeminiEmotion] = useState(EMOTION_STYLES[0]) // Neutraal as default
   
   // Use ref to track speech state without causing re-renders
   const speechActiveRef = useRef(false)
@@ -772,60 +777,69 @@ export default function ResponseActions({
   if (!content.trim()) return null
 
   return (
-    <div className={`space-y-2 mt-3 ${className}`}>
-      {/* Main Action Buttons */}
-      <div className="flex items-center justify-end space-x-2">
-        {/* Text-to-Speech Button */}
+    <div className={`mt-3 ${className}`}>
+      {/* Single Row with All Actions */}
+      <div className="flex items-center justify-end space-x-2 relative">
+        {/* Conditional TTS Component or Classic TTS */}
+        {useGeminiTTS ? (
+          <GeminiTTS
+            content={content}
+            isMarkdown={isMarkdown}
+            isStreaming={isStreaming}
+            selectedVoice={selectedGeminiVoice}
+            selectedEmotion={selectedGeminiEmotion}
+            hideSettings={true}
+            className=""
+          />
+        ) : (
+          <div className="flex items-center space-x-2">
+            {/* Classic TTS Button */}
+            <button
+              onClick={handleTextToSpeech}
+              disabled={isStreaming}
+              className={getTtsButtonClass()}
+              title={
+                isStreaming ? "Wacht tot response compleet is" :
+                ttsStatus === 'playing' ? "Pauzeer voorlezen" :
+                ttsStatus === 'paused' ? "Hervat voorlezen" :
+                bestVoice ? `Lees voor met ${bestVoice.name}` : "Lees voor"
+              }
+            >
+              <span>{getTtsButtonText()}</span>
+            </button>
+
+            {/* Stop TTS Button - only show when playing or paused */}
+            {(ttsStatus === 'playing' || ttsStatus === 'paused') && (
+              <button
+                onClick={stopTextToSpeech}
+                className="p-2 rounded-lg text-sm transition-all duration-200 bg-red-100 hover:bg-red-200 text-red-700 border border-red-200"
+                title="Stop voorlezen"
+              >
+                ⏹️
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Universal Settings Button */}
         <button
-          onClick={handleTextToSpeech}
-          onDoubleClick={toggleSpeedControl}
-          disabled={isStreaming}
-          className={getTtsButtonClass()}
-          title={
-            isStreaming ? "Wacht tot response compleet is" :
-            ttsStatus === 'playing' ? "Pauzeer voorlezen (dubbelklik voor snelheid)" :
-            ttsStatus === 'paused' ? "Hervat voorlezen (dubbelklik voor snelheid)" :
-            ttsStatus === 'waiting' ? "Speech wordt gestart..." :
-            ttsStatus === 'error' ? "Er is een fout opgetreden" :
-            bestVoice ? `Lees response voor met ${bestVoice.name} (dubbelklik voor snelheid)` :
-            "Lees response voor (dubbelklik voor snelheid)"
-          }
+          onClick={() => setShowUniversalSettings(!showUniversalSettings)}
+          className={`p-2 rounded-lg text-sm transition-all duration-200 ${
+            showUniversalSettings 
+              ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+              : 'bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-700 border border-gray-200'
+          }`}
+          title="TTS instellingen"
         >
-          <span>{getTtsButtonText()}</span>
+          ⚙️
         </button>
-
-        {/* Speed Control Toggle - only show when TTS is available */}
-        {!isStreaming && (
-          <button
-            onClick={toggleSpeedControl}
-            className={`p-2 rounded-lg text-sm transition-all duration-200 ${
-              showSpeedControl 
-                ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                : 'bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-700 border border-gray-200'
-            }`}
-            title="Spraaksnelheid aanpassen"
-          >
-            ⚙️
-          </button>
-        )}
-
-        {/* Stop TTS Button - only show when playing or paused */}
-        {(ttsStatus === 'playing' || ttsStatus === 'paused') && (
-          <button
-            onClick={stopTextToSpeech}
-            className="flex items-center space-x-2 px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-red-100 hover:bg-red-200 text-red-700 border border-red-200"
-            title="Stop voorlezen"
-          >
-            <span>⏹️</span>
-          </button>
-        )}
 
         {/* Word Download Button */}
         <button
           onClick={handleWordDownload}
           disabled={isStreaming || wordDownloadStatus === 'generating'}
           className={getWordDownloadButtonClass()}
-          title={isStreaming ? "Wacht tot response compleet is" : "Download response als Word document"}
+          title="Download als Word document"
         >
           <span>{getWordDownloadButtonText()}</span>
         </button>
@@ -835,33 +849,108 @@ export default function ResponseActions({
           onClick={handleCopy}
           disabled={isStreaming || copyStatus === 'copying'}
           className={getCopyButtonClass()}
-          title={isStreaming ? "Wacht tot response compleet is" : "Kopieer response naar klembord"}
+          title="Kopieer naar klembord"
         >
           <span>{getCopyButtonText()}</span>
         </button>
       </div>
 
-      {/* Speed Control Panel */}
-      {showSpeedControl && (
-        <div className="flex items-center justify-end space-x-1 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <span className="text-blue-700 text-sm font-medium mr-2">Snelheid:</span>
-          {speedOptions.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => changeSpeed(option.value)}
-              className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
-                speechRate === option.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-blue-700 hover:bg-blue-100 border border-blue-200'
-              }`}
-              title={`Snelheid: ${option.value}x`}
-            >
-              {option.label}
-            </button>
-          ))}
-          <div className="ml-3 text-blue-600 text-xs">
-            Huidig: {speechRate}x
+      {/* Universal Settings Dropdown */}
+      {showUniversalSettings && (
+        <div className="absolute z-20 mt-2 right-0 w-96 p-4 bg-white border border-gray-200 rounded-lg shadow-xl space-y-4">
+          {/* TTS Engine Selection */}
+          <div>
+            <label className="block text-gray-700 text-sm font-medium mb-2">🎙️ TTS Engine</label>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setUseGeminiTTS(false)}
+                className={`flex-1 px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
+                  !useGeminiTTS
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-blue-100 border border-gray-200'
+                }`}
+              >
+                🔊 Microsoft TTS
+              </button>
+              <button
+                onClick={() => setUseGeminiTTS(true)}
+                className={`flex-1 px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
+                  useGeminiTTS
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-purple-100 border border-gray-200'
+                }`}
+              >
+                🚀 Gemini AI TTS
+              </button>
+            </div>
           </div>
+
+          {/* Microsoft TTS Settings */}
+          {!useGeminiTTS && (
+            <div>
+              <label className="block text-blue-700 text-sm font-medium mb-2">⚡ Spraaksnelheid</label>
+              <div className="grid grid-cols-2 gap-2">
+                {speedOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => changeSpeed(option.value)}
+                    className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 ${
+                      speechRate === option.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 text-blue-600 text-xs text-center">
+                Huidige snelheid: {speechRate}x
+              </div>
+            </div>
+          )}
+
+          {/* Gemini TTS Settings */}
+          {useGeminiTTS && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-purple-700 text-sm font-medium mb-2">🎭 Stemkeuze</label>
+                <select
+                  value={selectedGeminiVoice.name}
+                  onChange={(e) => {
+                    const voice = GEMINI_VOICES.find(v => v.name === e.target.value)
+                    if (voice) setSelectedGeminiVoice(voice)
+                  }}
+                  className="w-full p-2 border border-purple-200 rounded-lg bg-white text-purple-700"
+                >
+                  {GEMINI_VOICES.map((voice) => (
+                    <option key={voice.name} value={voice.name}>
+                      {voice.name} - {voice.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-purple-700 text-sm font-medium mb-2">😊 Emotie</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {EMOTION_STYLES.map((emotion) => (
+                    <button
+                      key={emotion.name}
+                      onClick={() => setSelectedGeminiEmotion(emotion)}
+                      className={`px-3 py-2 text-xs rounded-lg transition-all duration-200 ${
+                        selectedGeminiEmotion.name === emotion.name
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                      }`}
+                    >
+                      {emotion.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

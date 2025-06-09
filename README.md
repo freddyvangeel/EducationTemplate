@@ -1,6 +1,6 @@
 # 🚀 Ultimate AI Education Template - Next.js
 
-> **Een complete, professionele AI template met Gemini API, camera, multi-file upload, audio transcriptie en meer!**
+> **Een complete, professionele AI template met Gemini API, camera, multi-file upload, audio transcriptie, advanced TTS en meer!**
 >
 > **Gemaakt door Tom Naberink voor de onderwijssector**
 
@@ -9,11 +9,21 @@ Een geavanceerde Next.js template die **alles** biedt wat je nodig hebt voor inn
 ## ✨ Complete Feature Set
 
 ### 🎯 **Core AI Functionaliteiten**
-- 🧠 **Gemini 2.5 Flash Integration**: Nieuwste AI model met vision capabilities
+- 🧠 **Multi-Model AI**: Gemini 2.5 Pro, 2.5 Flash, en 2.0 Flash met internet toegang
+- 🌐 **Real-time Internet Access**: Gemini 2.0 Flash met Google Search integration
 - 🎵 **Audio Transcriptie**: OpenAI Whisper voor speech-to-text
 - 📸 **Multi-Image Analysis**: Meerdere afbeeldingen tegelijk analyseren
 - 💬 **Markdown Rendering**: Perfecte opmaak van AI responses
 - 🗣️ **Spraakherkenning**: Browser native voice input
+- ⚡ **Streaming Responses**: Real-time AI response weergave
+
+### 🔊 **Advanced Text-to-Speech (TTS)**
+- 🎙️ **Dual TTS Engines**: Microsoft TTS (standaard) + Gemini AI TTS
+- 🎭 **30 Gemini Voices**: Van Zephyr tot Sulafat met unieke karakteristieken
+- 😊 **7 Emotion Styles**: Neutraal, Gelukkig, Enthousiast, Kalm, Professioneel, Vriendelijk, Informatief
+- ⚡ **Speed Control**: 4 snelheden voor Microsoft TTS (0.75x tot 2.0x)
+- ⚙️ **Unified Settings**: Één settings dropdown voor alle TTS opties
+- 📱 **Responsive Interface**: Geoptimaliseerd voor alle schermformaten
 
 ### 📁 **Geavanceerd File Management**
 - 🖼️ **Afbeeldingen**: JPG, PNG, GIF, WebP, BMP - met preview en multi-select
@@ -31,6 +41,8 @@ Een geavanceerde Next.js template die **alles** biedt wat je nodig hebt voor inn
 - ⚡ **Real-time Feedback**: Loading states, progress indicators
 - 🎮 **Keyboard Shortcuts**: Enter om te verzenden, Ctrl+V om te plakken
 - 🔒 **Secure**: Alle API keys blijven server-side
+- 📄 **Word Export**: AI responses exporteren naar Word documenten
+- 📋 **One-Click Copy**: Responses kopiëren naar klembord
 
 ### 🚀 **Deployment & Performance**
 - 🌐 **Netlify Optimized**: Perfect voor Bolt.new deployment
@@ -87,12 +99,30 @@ npm run dev
 
 ## 📋 Volledige Feature Demonstratie
 
+### 🎯 **AI Model Selector**
+```
+🧠 Gemini 2.5 Pro: Hoogste kwaliteit, diepgaande analyse
+⚡ Gemini 2.5 Flash: Beste balans snelheid & kwaliteit (standaard)
+🌐 Gemini 2.0 Flash: Internet toegang + Google Search (minder slim model)
+```
+
+### 🔊 **Text-to-Speech Demo**
+```
+1. Schrijf een AI response
+2. Klik op ⚙️ voor TTS instellingen
+3. Kies tussen Microsoft TTS (standaard) of Gemini AI TTS
+4. Microsoft: Pas snelheid aan (4 opties)
+5. Gemini: Kies stem (30 opties) + emotie (7 opties)
+6. Klik 🔊 om audio af te spelen
+```
+
 ### 🎯 **Multi-Modal AI Conversaties**
 ```
 ✅ Upload 3 afbeeldingen + audio bestand + PDF document
 ✅ Selecteer welke bestanden je wilt analyseren  
 ✅ Vraag: "Vergelijk deze afbeeldingen met de audio transcriptie"
 ✅ Gemini analyseert alles tegelijk en geeft uitgebreid antwoord
+✅ Luister naar response met TTS + download als Word
 ```
 
 ### 📸 **Camera & Vision**
@@ -103,7 +133,7 @@ npm run dev
 
 ### 🎵 **Audio Processing Pipeline**
 ```
-Audio Upload → Whisper Transcriptie → Gemini Analyse → Markdown Response
+Audio Upload → Whisper Transcriptie → Gemini Analyse → Markdown Response → TTS Output
 ```
 - Ondersteunt 10+ audio formaten
 - Automatische taaldetectie (Nederlands hint)
@@ -133,10 +163,14 @@ Audio Upload → Whisper Transcriptie → Gemini Analyse → Markdown Response
     │   ├── 🏠 page.tsx            # Main interface
     │   └── 🔌 api/
     │       ├── 💬 chat/route.ts            # Gemini AI endpoint
+    │       ├── 🌊 chat-stream/route.ts     # Streaming responses
+    │       ├── 🔊 generate-tts/route.ts    # Gemini TTS endpoint
     │       ├── 🎵 transcribe-audio/route.ts # Whisper transcription
     │       └── 📄 upload-docx/route.ts     # Document processing
     └── 🧩 components/
         ├── 🤖 TestChatBot.tsx     # Main AI interface
+        ├── 🔊 GeminiTTS.tsx       # Gemini TTS component
+        ├── ⚙️ ResponseActions.tsx # TTS, Copy, Word export
         ├── 📸 CameraCapture.tsx   # Camera functionality
         ├── 📝 MarkdownRenderer.tsx # Response formatting
         ├── 📁 FileUpload.tsx      # File handling
@@ -148,7 +182,9 @@ Audio Upload → Whisper Transcriptie → Gemini Analyse → Markdown Response
 
 | Endpoint | Functie | Input | Output |
 |----------|---------|-------|--------|
-| `/api/chat` | Gemini AI Conversatie | `message`, `images[]` | AI Response |
+| `/api/chat` | Gemini AI Conversatie | `message`, `images[]`, `aiModel` | AI Response |
+| `/api/chat-stream` | Streaming AI Response | `message`, `images[]`, `aiModel` | Server-Sent Events |
+| `/api/generate-tts` | Gemini TTS Audio | `text`, `voiceName`, `emotion` | WAV Audio |
 | `/api/transcribe-audio` | Audio → Tekst | Audio File | Transcriptie |
 | `/api/upload-docx` | Document Processing | PDF/DOCX/CSV | Extracted Text |
 
@@ -173,12 +209,20 @@ Audio Upload → Whisper Transcriptie → Gemini Analyse → Markdown Response
 }
 ```
 
-### 🤖 **Gemini Model Switching**
+### 🤖 **Gemini Model Configuration**
 ```typescript
 // src/app/api/chat/route.ts
-const model = genAI.getGenerativeModel({ 
-  model: 'gemini-2.5-flash-preview-05-20'  // Of: gemini-1.5-pro-latest
-});
+const modelName = aiModel === 'pro' ? 'gemini-2.5-pro-preview-06-05' :
+                 aiModel === 'smart' ? 'gemini-2.5-flash-preview-05-20' :
+                 'gemini-2.0-flash-exp' // internet model
+```
+
+### 🔊 **TTS Engine Customization**
+```typescript
+// src/components/ResponseActions.tsx
+const [useGeminiTTS, setUseGeminiTTS] = useState(false) // Default to Microsoft TTS
+const [selectedGeminiVoice, setSelectedGeminiVoice] = useState(GEMINI_VOICES[3]) // Kore
+const [selectedGeminiEmotion, setSelectedGeminiEmotion] = useState(EMOTION_STYLES[0]) // Neutraal
 ```
 
 ### 🎵 **Whisper Configuration**
