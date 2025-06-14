@@ -50,13 +50,16 @@ export default function Home() {
             
             <div className="space-y-6">
               
-              {/* Step 1 - Import from GitHub in Bolt */}
+              {/* Step 1 - Fork GitHub Template */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 1: Import in Bolt.new
+                  Stap 1: Fork dit template in GitHub
                 </h3>
                 <p className="text-gray-600 mb-3">
-                  Open <a href="https://bolt.new" target="_blank" className="text-purple-600 hover:text-purple-800 underline">Bolt.new</a> en login. Selecteer '<strong>import from github</strong>' en login op Github. Vervolgens '<strong>import from url</strong>' en vul deze URL in:
+                  Ga naar <a href="https://github.com" target="_blank" className="text-purple-600 hover:text-purple-800 underline">github.com</a> en login in. Ga dan naar deze pagina: <a href="https://github.com/TomNaberink/apitemplateTom" target="_blank" className="text-purple-600 hover:text-purple-800 underline">https://github.com/TomNaberink/apitemplateTom</a>
+                </p>
+                <p className="text-gray-600 mb-3">
+                  Klik rechtsbovenin op '<strong>fork</strong>', geef het een gepaste naam voor je project en klik op '<strong>create fork</strong>'.
                 </p>
                 <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
                   <div className="flex items-center justify-between mb-2">
@@ -71,10 +74,20 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Step 2 - Create .env.local */}
+              {/* Step 2 - Import from GitHub in Bolt */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 2: Maak een .env.local bestand
+                  Stap 2: Import in Bolt.new
+                </h3>
+                <p className="text-gray-600 mb-3">
+                  Open <a href="https://bolt.new" target="_blank" className="text-purple-600 hover:text-purple-800 underline">Bolt.new</a> en login. Selecteer '<strong>import from github</strong>' en login op GitHub. Kies dan de '<strong>repository</strong>' die je net hebt geforkt.
+                </p>
+              </div>
+
+              {/* Step 3 - Create .env.local */}
+              <div className="border-l-4 border-purple-500 pl-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  Stap 3: Maak een .env.local bestand
                 </h3>
                 <p className="text-gray-600 mb-3">
                   Als het template is geladen ga je naar het <strong>tabblad "Code"</strong>. Bij de files doe je <strong>rechtermuisknop</strong> en klik je op <strong>"New File"</strong>. Die noem je <code className="bg-gray-100 px-2 py-1 rounded text-sm">.env.local</code>. Daar binnen zet je het volgende:
@@ -94,10 +107,10 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Step 3 - Get API Key */}
+              {/* Step 4 - Get API Key */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 3: Verkrijg een Gemini API Key
+                  Stap 4: Verkrijg een Gemini API Key
                 </h3>
                 <p className="text-gray-600 mb-3">
                   Ga naar Google AI Studio om je gratis API key aan te maken:
@@ -120,28 +133,28 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Step 4 - Enhanced Test Step */}
+              {/* Step 5 - Enhanced Test Step */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 4: Test je API Key & Alle Features
+                  Stap 5: Test je API Key & Alle Features
                 </h3>
                 <TestChatBot />
               </div>
 
-              {/* Step 5 - Build Step */}
+              {/* Step 6 - Build Step */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 5: Bouwen maar!
+                  Stap 6: Bouwen maar!
                 </h3>
                 <p className="text-gray-600">
                   Er staat veel informatie in de <code className="bg-gray-100 px-2 py-1 rounded text-sm">README.md</code>, maar je mag ook lekker gaan viben! Wat ga jij maken om het onderwijs te verbeteren?
                 </p>
               </div>
 
-              {/* Step 6 - Deploy with Vercel */}
+              {/* Step 7 - Deploy with Vercel */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 6: Deploy met Vercel
+                  Stap 7: Deploy met Vercel
                 </h3>
                 <p className="text-gray-600 mb-3">
                   Ga naar <a href="https://vercel.com" target="_blank" className="text-purple-600 hover:text-purple-800 underline">Vercel.com</a>, login en koppel je Github. Klik op <strong>'Add New'</strong> en importeer de Github die je net hebt gemaakt binnen Bolt. <strong className="text-red-600">KLIK NOG NIET OP DEPLOY</strong>. Eerst moet je de <strong>'Environment Variable'</strong> instellen:
@@ -158,10 +171,10 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Step 7 - Test and Share */}
+              {/* Step 8 - Test and Share */}
               <div className="border-l-4 border-purple-500 pl-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stap 7: Testen en delen
+                  Stap 8: Testen en delen
                 </h3>
                 <p className="text-gray-600 mb-3">
                   🎉 <strong>Gefeliciteerd!</strong> Je AI-tool is nu live op het internet. Test alles zorgvuldig voordat je het deelt!

@@ -52,12 +52,19 @@ Een geavanceerde Next.js template die **alles** biedt wat je nodig hebt voor inn
 
 ## 🚀 Quick Start: Van 0 naar AI in 5 Minuten!
 
-### Stap 1: 🔑 API Keys Verkrijgen
+### Stap 1: 🍴 Fork dit template in GitHub
+Fork dit template in GitHub. Ga naar [github.com](https://github.com) en login in. Ga dan naar deze pagina: [https://github.com/TomNaberink/apitemplateTom](https://github.com/TomNaberink/apitemplateTom)
+Klik rechtsbovenin op 'fork', geef het een gepaste naam voor je project en klik op 'create fork'.
+
+### Stap 2: 📥 Import in Bolt.new
+Open [Bolt.new](https://bolt.new) en login. Selecteer 'import from github' en login op GitHub. Kies dan de 'repository' die je net hebt geforkt.
+
+### Stap 3: 🔑 API Keys Verkrijgen
 **Vereist:** [Gemini API Key](https://makersuite.google.com/app/apikey) (gratis)
 
 ⚠️ **Kosten**: Gemini heeft een genereuze gratis tier voor alle functionaliteiten inclusief audio transcriptie.
 
-### Stap 2: 🛠️ Project Setup
+### Stap 4: 🛠️ Project Setup
 ```bash
 # Clone het project
 git clone https://github.com/TomNaberink/templateAPIinclcamera.git
@@ -71,7 +78,7 @@ cp .env.example .env.local
 # Edit .env.local en voeg je API keys toe
 ```
 
-### Stap 3: 🔧 Environment Configuration
+### Stap 5: 🔧 Environment Configuration
 Maak `.env.local` aan met je API keys:
 
 ```env
@@ -79,14 +86,14 @@ Maak `.env.local` aan met je API keys:
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### Stap 4: 🎉 Start & Test
+### Stap 6: 🎉 Start & Test
 ```bash
 npm run dev
 # Open http://localhost:3000
 # Test alle features met de ingebouwde interface!
 ```
 
-### Stap 5: 🚀 Deploy naar Netlify
+### Stap 7: 🚀 Deploy naar Netlify
 1. **In Bolt.new**: "Deploy to Netlify"
 2. **Environment Variables toevoegen** in Netlify dashboard:
    - `GEMINI_API_KEY` (vereist voor alle functionaliteiten)
