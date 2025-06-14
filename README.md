@@ -54,7 +54,7 @@ Een geavanceerde Next.js template die **alles** biedt wat je nodig hebt voor inn
 
 ### Stap 1: 🍴 Fork dit template in GitHub
 Fork dit template in GitHub. Ga naar [github.com](https://github.com) en login in. Ga dan naar deze pagina: [https://github.com/TomNaberink/apitemplateTom](https://github.com/TomNaberink/apitemplateTom)
-Klik rechtsbovenin op 'fork', geef het een gepaste naam voor je project en klik op 'create fork'.
+Klik rechtsbovenin op 'Use this template', geef het een gepaste naam voor je project en klik op 'create fork'.
 
 ### Stap 2: 📥 Import in Bolt.new
 Open [Bolt.new](https://bolt.new) en login. Selecteer 'import from github' en login op GitHub. Kies dan de 'repository' die je net hebt geforkt.
@@ -387,5 +387,5 @@ Deze template geeft je **alles** wat je nodig hebt om geavanceerde AI-applicatie
 
 ---
 
-*Versie 2.0 - Complete AI Education Template*  
-*Last updated: December 2024* 
+*Versie 1.0 - Complete AI Education Template*  
+*Last updated: Juni 2025* 
