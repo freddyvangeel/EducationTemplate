@@ -17,6 +17,7 @@ interface UploadedFile {
 }
 
 export default function TestChatBot() {
+  const [hasMounted, setHasMounted] = useState(false)
   const [message, setMessage] = useState('')
   const [response, setResponse] = useState('')
   const [streamingResponse, setStreamingResponse] = useState('')
@@ -26,6 +27,11 @@ export default function TestChatBot() {
   const [aiModel, setAiModel] = useState<'pro' | 'smart' | 'internet'>('smart') // 'pro' = 2.5 Pro, 'smart' = 2.5 Flash, 'internet' = 2.0
   const [useGrounding, setUseGrounding] = useState(true)
   const [groundingData, setGroundingData] = useState<any>(null)
+
+  // Client-side mounting check
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
 
   // Automatically enable grounding when Internet model is selected
   useEffect(() => {
@@ -47,6 +53,8 @@ export default function TestChatBot() {
 
   // Setup paste event listeners
   useEffect(() => {
+    if (!hasMounted) return
+    
     const textarea = textareaRef.current
     if (textarea) {
       textarea.addEventListener('paste', handlePaste)
@@ -54,7 +62,7 @@ export default function TestChatBot() {
         textarea.removeEventListener('paste', handlePaste)
       }
     }
-  }, [])
+  }, [hasMounted])
 
   // Voice recognition setup
   const initializeVoiceRecognition = () => {
@@ -702,6 +710,23 @@ export default function TestChatBot() {
       e.preventDefault()
       sendMessageStreaming()
     }
+  }
+
+  // Don't render anything until the component has mounted on the client
+  if (!hasMounted) {
+    return (
+      <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-purple-800 mb-4 flex items-center">
+          <span className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center mr-2">
+            <span className="text-white text-sm">💬</span>
+          </span>
+          Test je API Key
+        </h3>
+        <div className="flex items-center justify-center p-8">
+          <div className="text-purple-600">Loading...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
