@@ -711,7 +711,7 @@ export default function TestChatBot() {
       sendMessageStreaming()
     }
   }
-
+if (!hasMounted) return null
   return (
     <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
       <h3 className="text-lg font-semibold text-purple-800 mb-4 flex items-center">
