@@ -712,23 +712,6 @@ export default function TestChatBot() {
     }
   }
 
-  // Don't render anything until the component has mounted on the client
-  if (!hasMounted) {
-    return (
-      <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-purple-800 mb-4 flex items-center">
-          <span className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center mr-2">
-            <span className="text-white text-sm">💬</span>
-          </span>
-          Test je API Key
-        </h3>
-        <div className="flex items-center justify-center p-8">
-          <div className="text-purple-600">Loading...</div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
       <h3 className="text-lg font-semibold text-purple-800 mb-4 flex items-center">
@@ -1001,10 +984,12 @@ export default function TestChatBot() {
               </button>
               
               {/* Camera Button */}
-              <CameraCapture 
-                onCapture={handleCameraCapture}
-                disabled={isLoading}
-              />
+              {hasMounted && (
+                <CameraCapture 
+                  onCapture={handleCameraCapture}
+                  disabled={isLoading}
+                />
+              )}
               
               {/* Voice Input Button */}
               <button
