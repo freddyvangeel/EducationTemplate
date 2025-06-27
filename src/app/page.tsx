@@ -4,7 +4,10 @@ import Image from 'next/image'
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+    <div
+  className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100"
+  suppressHydrationWarning
+>
       <div className="container mx-auto px-4 py-16">
         {/* Header */}
         <div className="text-center mb-12">
