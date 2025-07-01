@@ -17,6 +17,7 @@ export default function LeermeterChatBot() {
   const [isLoading, setIsLoading] = useState(false)
   const [leermeterContent, setLeermeterContent] = useState('')
   const [isDocumentLoaded, setIsDocumentLoaded] = useState(false)
+  const [documentError, setDocumentError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -36,20 +37,36 @@ export default function LeermeterChatBot() {
 
   const loadLeermeterDocument = async () => {
     try {
-      console.log('Loading Leermeter document...')
+      console.log('🔍 Trying to load Leermeter document...')
+      setDocumentError('')
       
-      // Try to fetch the document from the public folder
+      // First, try to check if the file exists
+      const checkResponse = await fetch('/documents/Leermeter.docx', { method: 'HEAD' })
+      
+      if (!checkResponse.ok) {
+        console.log('❌ Document not found at /documents/Leermeter.docx')
+        throw new Error(`Document niet gevonden (${checkResponse.status})`)
+      }
+
+      console.log('✅ Document found, now fetching...')
+      
+      // Fetch the actual document
       const response = await fetch('/documents/Leermeter.docx')
       
       if (!response.ok) {
-        throw new Error(`Document not found: ${response.status}`)
+        throw new Error(`Kan document niet laden: ${response.status}`)
       }
 
+      console.log('📄 Document fetched, processing...')
+      
       const blob = await response.blob()
+      console.log('📦 Blob created, size:', blob.size, 'bytes')
+      
       const formData = new FormData()
       formData.append('file', blob, 'Leermeter.docx')
 
       // Process the document through our API
+      console.log('🔄 Processing document through API...')
       const uploadResponse = await fetch('/api/upload-docx', {
         method: 'POST',
         body: formData,
@@ -57,14 +74,15 @@ export default function LeermeterChatBot() {
 
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json()
-        throw new Error(errorData.error || 'Failed to process document')
+        console.error('❌ API Error:', errorData)
+        throw new Error(errorData.error || 'Kan document niet verwerken')
       }
 
       const data = await uploadResponse.json()
+      console.log('✅ Document processed successfully, content length:', data.content?.length)
+      
       setLeermeterContent(data.content)
       setIsDocumentLoaded(true)
-      
-      console.log('Leermeter document loaded successfully')
       
       // Add welcome message
       const welcomeMessage: ChatMessage = {
@@ -89,31 +107,37 @@ Stel gerust je vraag! 😊`,
       setMessages([welcomeMessage])
       
     } catch (error) {
-      console.error('Error loading Leermeter document:', error)
+      console.error('💥 Error loading Leermeter document:', error)
+      setDocumentError(error instanceof Error ? error.message : 'Onbekende fout')
       
       const errorMessage: ChatMessage = {
         id: generateMessageId(),
         type: 'assistant',
         content: `Sorry! 😔 
 
-Ik kan het Leermeter document niet laden. 
+Ik kan het Leermeter document niet laden.
 
-**Mogelijke oorzaken:**
-- Het bestand staat niet op de juiste plek
-- Er is een probleem met het lezen van het bestand
+**Fout:** ${error instanceof Error ? error.message : 'Onbekende fout'}
 
-Probeer het later nog eens of neem contact op met de beheerder.`,
+**Wat kun je doen:**
+1. Controleer of het bestand \`Leermeter.docx\` in de map \`public/documents/\` staat
+2. Herlaad de pagina
+3. Neem contact op met de beheerder
+
+**Tijdelijke oplossing:**
+Je kunt ook handmatig vragen stellen en ik probeer te helpen op basis van algemene kennis over leermeters.`,
         timestamp: new Date()
       }
       
       setMessages([errorMessage])
+      setIsDocumentLoaded(false)
     }
   }
 
   const generateMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
   const sendMessage = async () => {
-    if (!message.trim() || isLoading || !isDocumentLoaded) return
+    if (!message.trim() || isLoading) return
 
     const userMessage: ChatMessage = {
       id: generateMessageId(),
@@ -127,8 +151,11 @@ Probeer het later nog eens of neem contact op met de beheerder.`,
     setIsLoading(true)
 
     try {
-      // Create a prompt that focuses on simple Dutch and the Leermeter content
-      const prompt = `Je bent een vriendelijke helper die vragen beantwoordt over de Leermeter. 
+      let prompt = ''
+      
+      if (isDocumentLoaded && leermeterContent) {
+        // Use the loaded document content
+        prompt = `Je bent een vriendelijke helper die vragen beantwoordt over de Leermeter. 
 
 BELANGRIJKE REGELS:
 1. Antwoord ALLEEN in het Nederlands
@@ -145,6 +172,23 @@ ${leermeterContent}
 GEBRUIKER VRAAG: ${userMessage.content}
 
 Geef een kort, duidelijk antwoord in eenvoudig Nederlands. Als de vraag niet over de Leermeter gaat, leg dan vriendelijk uit dat je alleen over de Leermeter kunt praten.`
+      } else {
+        // Fallback when document is not loaded
+        prompt = `Je bent een vriendelijke helper die vragen beantwoordt over leermeters in het algemeen.
+
+BELANGRIJKE REGELS:
+1. Antwoord ALLEEN in het Nederlands
+2. Gebruik eenvoudige woorden (taalniveau B1)
+3. Maak korte, duidelijke zinnen
+4. Gebruik geen moeilijke vakwoorden
+5. Leg dingen uit alsof je praat tegen iemand die nog leert
+6. Gebruik vriendelijke emoji's 😊
+7. Begin je antwoord met een waarschuwing dat je het specifieke Leermeter document niet hebt kunnen laden
+
+GEBRUIKER VRAAG: ${userMessage.content}
+
+Geef een kort, duidelijk antwoord in eenvoudig Nederlands over leermeters in het algemeen. Leg uit dat je het specifieke document niet hebt kunnen laden.`
+      }
 
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -180,7 +224,9 @@ Geef een kort, duidelijk antwoord in eenvoudig Nederlands. Als de vraag niet ove
         type: 'assistant',
         content: `Sorry! 😔 Er ging iets mis. 
 
-Probeer het nog een keer. Als het probleem blijft, neem dan contact op met de beheerder.`,
+Probeer het nog een keer. Als het probleem blijft, neem dan contact op met de beheerder.
+
+**Fout:** ${error instanceof Error ? error.message : 'Onbekende fout'}`,
         timestamp: new Date()
       }
 
@@ -202,6 +248,13 @@ Probeer het nog een keer. Als het probleem blijft, neem dan contact op met de be
     loadLeermeterDocument() // Reload welcome message
   }
 
+  const retryDocumentLoad = () => {
+    setMessages([])
+    setDocumentError('')
+    setIsDocumentLoaded(false)
+    loadLeermeterDocument()
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
       {/* Header */}
@@ -214,20 +267,38 @@ Probeer het nog een keer. Als het probleem blijft, neem dan contact op met de be
             <div>
               <h2 className="text-xl font-bold">Chat met Leermeter</h2>
               <p className="text-blue-100 text-sm">
-                {isDocumentLoaded ? '✅ Document geladen' : '⏳ Document laden...'}
+                {isDocumentLoaded ? (
+                  '✅ Document geladen'
+                ) : documentError ? (
+                  '❌ Document fout'
+                ) : (
+                  '⏳ Document laden...'
+                )}
               </p>
             </div>
           </div>
           
-          {messages.length > 1 && (
-            <button
-              onClick={clearChat}
-              className="px-3 py-1 bg-white bg-opacity-20 rounded-lg text-sm hover:bg-opacity-30 transition-colors"
-              title="Nieuw gesprek starten"
-            >
-              🔄 Nieuw gesprek
-            </button>
-          )}
+          <div className="flex items-center space-x-2">
+            {documentError && (
+              <button
+                onClick={retryDocumentLoad}
+                className="px-3 py-1 bg-yellow-500 bg-opacity-20 rounded-lg text-sm hover:bg-opacity-30 transition-colors"
+                title="Probeer document opnieuw te laden"
+              >
+                🔄 Opnieuw proberen
+              </button>
+            )}
+            
+            {messages.length > 1 && (
+              <button
+                onClick={clearChat}
+                className="px-3 py-1 bg-white bg-opacity-20 rounded-lg text-sm hover:bg-opacity-30 transition-colors"
+                title="Nieuw gesprek starten"
+              >
+                🆕 Nieuw gesprek
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -298,19 +369,21 @@ Probeer het nog een keer. Als het probleem blijft, neem dan contact op met de be
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={
-                isDocumentLoaded 
-                  ? "Stel je vraag over de Leermeter..." 
-                  : "Even geduld, document wordt geladen..."
+                documentError
+                  ? "Stel je vraag (document niet geladen, maar ik help graag)..."
+                  : isDocumentLoaded 
+                    ? "Stel je vraag over de Leermeter..." 
+                    : "Even geduld, document wordt geladen..."
               }
               className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={2}
-              disabled={isLoading || !isDocumentLoaded}
+              disabled={isLoading}
             />
           </div>
           
           <button
             onClick={sendMessage}
-            disabled={isLoading || !message.trim() || !isDocumentLoaded}
+            disabled={isLoading || !message.trim()}
             className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
           >
             {isLoading ? (
@@ -329,6 +402,11 @@ Probeer het nog een keer. Als het probleem blijft, neem dan contact op met de be
         
         <p className="text-xs text-gray-500 mt-2 text-center">
           💡 Tip: Druk op Enter om je vraag te versturen
+          {documentError && (
+            <span className="text-orange-600 ml-2">
+              • Document niet geladen, maar chatbot werkt nog steeds
+            </span>
+          )}
         </p>
       </div>
     </div>
