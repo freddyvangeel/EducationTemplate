@@ -38,51 +38,29 @@ export default function LeermeterChatBot() {
 
   const loadLeermeterDocument = async () => {
     try {
-      console.log('🔍 Trying to load Leermeter document...')
+      console.log('🔍 Trying to load Leermeter markdown document...')
       setDocumentError('')
       
-      // First, try to check if the file exists
-      const checkResponse = await fetch('/documents/Leermeter.docx', { method: 'HEAD' })
-      
-      if (!checkResponse.ok) {
-        console.log('❌ Document not found at /documents/Leermeter.docx')
-        throw new Error(`Document niet gevonden (${checkResponse.status})`)
-      }
-
-      console.log('✅ Document found, now fetching...')
-      
-      // Fetch the actual document
-      const response = await fetch('/documents/Leermeter.docx')
+      // Fetch the markdown document directly
+      const response = await fetch('/documents/leermeter.md')
       
       if (!response.ok) {
-        throw new Error(`Kan document niet laden: ${response.status}`)
+        console.log('❌ Document not found at /documents/leermeter.md')
+        throw new Error(`Document niet gevonden (${response.status})`)
       }
 
-      console.log('📄 Document fetched, processing...')
+      console.log('✅ Document found, reading content...')
       
-      const blob = await response.blob()
-      console.log('📦 Blob created, size:', blob.size, 'bytes')
+      // Read the markdown content directly as text
+      const markdownContent = await response.text()
       
-      const formData = new FormData()
-      formData.append('file', blob, 'Leermeter.docx')
-
-      // Process the document through our API
-      console.log('🔄 Processing document through API...')
-      const uploadResponse = await fetch('/api/upload-docx', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json()
-        console.error('❌ API Error:', errorData)
-        throw new Error(errorData.error || 'Kan document niet verwerken')
+      if (!markdownContent || markdownContent.trim().length === 0) {
+        throw new Error('Document is leeg')
       }
 
-      const data = await uploadResponse.json()
-      console.log('✅ Document processed successfully, content length:', data.content?.length)
+      console.log('✅ Document loaded successfully, content length:', markdownContent.length)
       
-      setLeermeterContent(data.content)
+      setLeermeterContent(markdownContent)
       setIsDocumentLoaded(true)
       
       // Add welcome message
@@ -121,7 +99,7 @@ Ik kan het Leermeter document niet laden.
 **Fout:** ${error instanceof Error ? error.message : 'Onbekende fout'}
 
 **Wat kun je doen:**
-1. Controleer of het bestand \`Leermeter.docx\` in de map \`public/documents/\` staat
+1. Controleer of het bestand \`leermeter.md\` in de map \`public/documents/\` staat
 2. Herlaad de pagina
 3. Neem contact op met de beheerder
 
