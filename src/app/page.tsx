@@ -1,3 +1,6 @@
+'use client'
+export const dynamic = 'force-dynamic'
+  
 import LeermeterChatBot from '@/components/LeermeterChatBot'
 
 export default function Home() {
