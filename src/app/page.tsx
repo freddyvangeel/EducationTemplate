@@ -35,18 +35,6 @@ export default function Home() {
         <div className="max-w-4xl mx-auto">
           <LeermeterChatBot />
         </div>
-
-        {/* Footer */}
-        <div className="text-center mt-12">
-          <div className="inline-flex items-center space-x-4 text-blue-600">
-            <span>📖</span>
-            <span>Eenvoudige antwoorden over de Leermeter</span>
-            <span>🤖</span>
-          </div>
-          <p className="text-gray-500 text-sm mt-2">
-            Chat met Leermeter • Powered by Gemini AI • Eenvoudig Nederlands
-          </p>
-        </div>
       </div>
     </div>
   )
