@@ -20,6 +20,7 @@ export default function LeermeterChatBot() {
   const [documentError, setDocumentError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messageIdCounterRef = useRef(0)
 
   // Scroll to bottom when new messages are added
   const scrollToBottom = () => {
@@ -134,7 +135,10 @@ Je kunt ook handmatig vragen stellen en ik probeer te helpen op basis van algeme
     }
   }
 
-  const generateMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const generateMessageId = () => {
+    messageIdCounterRef.current += 1
+    return `msg_${messageIdCounterRef.current}`
+  }
 
   const sendMessage = async () => {
     if (!message.trim() || isLoading) return
@@ -245,6 +249,7 @@ Probeer het nog een keer. Als het probleem blijft, neem dan contact op met de be
 
   const clearChat = () => {
     setMessages([])
+    messageIdCounterRef.current = 0 // Reset counter when clearing chat
     loadLeermeterDocument() // Reload welcome message
   }
 
@@ -252,6 +257,7 @@ Probeer het nog een keer. Als het probleem blijft, neem dan contact op met de be
     setMessages([])
     setDocumentError('')
     setIsDocumentLoaded(false)
+    messageIdCounterRef.current = 0 // Reset counter when retrying
     loadLeermeterDocument()
   }
 
